@@ -31,7 +31,7 @@ $neonStorm = Join-Path $root 'presets\preset-neon-storm'
 & $node (Join-Path $root 'scripts\deep-theme.mjs') validate --theme-dir $neonStorm | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'Bundled Neon Storm preset validation failed.' }
 $guiSource = Get-Content -LiteralPath (Join-Path $root 'windows-app\Program.cs') -Raw
-if ($guiSource -notmatch 'preset-neon-storm' -or $guiSource -notmatch '应用内置霓虹雨夜皮肤') {
+if ($guiSource -notmatch 'preset-neon-storm' -or $guiSource -notmatch 'ApplyBuiltinPresetAsync') {
   throw 'Windows GUI installer must expose the bundled Neon Storm preset.'
 }
 $guiBuilder = Get-Content -LiteralPath (Join-Path $root 'scripts\windows\build-gui-installer.ps1') -Raw
