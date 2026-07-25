@@ -22,13 +22,19 @@
 - 默认按“总用量”展示并让缓存输入参与成长，等级行右侧可开启“净用量”开关查看排除缓存后的数据；fork、子 Agent 继承历史和重复 token 事件会去重。
 - 当前日志没有稳定账号 ID，因此这里明确显示“本机统计 / 本机 Codex 等级”，不是 OpenAI 官方账单或账号云端等级。
 
-## 最新版本 2.6.1
+## 最新版本 2.6.2
+
+- **内置霓虹雨夜皮肤：** 与大黄蜂一样随安装器打包；安装后出现在「自定义」皮肤库，可一键切换。任务 idle 疏雨、运行中霓虹雨、完成后短时闪电风暴。
+- **Windows 一键入口：** 安装器新增「应用内置霓虹雨夜皮肤」，与「应用内置大黄蜂皮肤」并列。
+- **雨夜性能优化：** 天气层限分辨率与帧率、降低粒子密度，并去掉昂贵的全屏混合与毛玻璃，尽量不影响 Codex 使用流畅度。
+
+Windows 用户请从 [GitHub Releases](https://github.com/zhulin025/Codex-QQ-Skin/releases) 下载 `ChatGPT QQ Skin Setup 2.6.2.exe`。
+
+## 2.6.1 亮点
 
 - **Codex 26.721 兼容：** 识别首页新增的 `home-banners` 结构，按 DOM 自动切换布局，修复 QQ / 自定义皮肤下「新建任务」面板空白。
 - **原生模式清理：** 切换到原生皮肤或 reinject 时不再残留 QQ 企鹅头像与侧栏 profile。
 - **旧版兼容：** 没有 banners 的旧版 Codex 仍走原来的首页注入路径。
-
-Windows 用户请从 [GitHub Releases](https://github.com/zhulin025/Codex-QQ-Skin/releases) 下载 `ChatGPT QQ Skin Setup 2.6.1.exe`。
 
 ## 2.6.0 亮点
 
@@ -52,15 +58,15 @@ Codex QQ Skin 新建任务界面
 
 ## 安装
 
-> Windows 用户请查看 [README-WINDOWS.md](./README-WINDOWS.md)，并从 [GitHub Releases](https://github.com/zhulin025/Codex-QQ-Skin/releases) 下载 `ChatGPT QQ Skin Setup 2.6.1.exe`。安装器已经内置运行引擎与 Node.js。
+> Windows 用户请查看 [README-WINDOWS.md](./README-WINDOWS.md)，并从 [GitHub Releases](https://github.com/zhulin025/Codex-QQ-Skin/releases) 下载 `ChatGPT QQ Skin Setup 2.6.2.exe`。安装器已经内置运行引擎与 Node.js。
 
 安装前请确保官方 Codex/ChatGPT 桌面端至少成功启动过一次，并完全退出 Codex。项目不要求另行安装 Node.js。
 
 ### Windows：原生安装器（推荐）
 
-1. 从 [GitHub Releases](https://github.com/zhulin025/Codex-QQ-Skin/releases) 下载 `ChatGPT QQ Skin Setup 2.6.1.exe`。
+1. 从 [GitHub Releases](https://github.com/zhulin025/Codex-QQ-Skin/releases) 下载 `ChatGPT QQ Skin Setup 2.6.2.exe`。
 2. 双击运行，点击“一键安装并启动”。
-3. 点击“应用内置大黄蜂皮肤”可直接安装并切换到随安装器打包的深度预设。
+3. 点击“应用内置大黄蜂皮肤”或“应用内置霓虹雨夜皮肤”，可直接安装并切换到随安装器打包的深度预设；它们也会出现在自定义皮肤库中。
 4. 深度皮肤助手区域会显示“安装”“更新”或“已安装”；按提示完成后，直接在 Codex 中用一句主题关键词生成深度皮肤。
 5. 如只需自定义背景，仍可点击“上传图片生成皮肤”，选择 PNG、JPEG 或 WebP 图片。
 6. 右上角可随时切换 `原生 / QQ / 自定义` 三种模式。
@@ -93,6 +99,7 @@ chmod +x ./*.command scripts/*.sh
 2. 解压后将 **Codex QQ Skin.app** 拖入“应用程序”文件夹。
 3. 双击打开 APP，首次点击“一键安装并启动”。
 4. 安装完成后，以后直接双击 APP 即可启动 QQ 皮肤版 Codex，不需要打开终端或手动修改文件权限。APP 只会自动升级到严格更新的版本；相同版本不会重复更新，也不会从本地较高版本降级。
+5. 打开「皮肤库」即可看到内置的「大黄蜂 · Cybertron」与「霓虹雨夜 · Storm Codex」，与自行上传的自定义皮肤一样切换使用。
 
 由于当前 APP 未使用 Apple Developer ID 签名和公证，首次打开时可能出现“无法验证开发者”或“Apple 无法检查是否包含恶意软件”。请确认 APP 下载自本项目的官方 GitHub Release，然后按以下步骤放行：
 
@@ -246,7 +253,7 @@ npm run build:app
 `npm run build:app` 会在 `release/` 生成同时支持 Apple Silicon 与 Intel 的 `Codex QQ Skin.app`。正式 Release 同时提供：
 
 - macOS：`Codex QQ Skin.app.zip`（可在本机 Mac 用 `npm run build:app` 生成）
-- Windows：`ChatGPT QQ Skin Setup 2.6.1.exe`（需 Windows CI / Windows 电脑构建，Mac 无法直接生成）
+- Windows：`ChatGPT QQ Skin Setup 2.6.2.exe`（需 Windows CI / Windows 电脑构建，Mac 无法直接生成）
 
 请只从本仓库的 [GitHub Releases](https://github.com/zhulin025/Codex-QQ-Skin/releases) 下载。设置 `DEVELOPER_ID_APPLICATION` 环境变量后会使用对应证书签名；公开分发前还需使用 Apple 公证服务处理最终 ZIP/DMG。
 
@@ -256,7 +263,7 @@ npm run build:app
 
 ```text
 assets/      外框、企鹅、CSS 与 renderer 注入代码
-presets/     经典 Codex QQ 三栏预设
+presets/     经典 Codex QQ、大黄蜂、霓虹雨夜等内置预设
 scripts/     安装、启动、验证、换图、暂停和恢复脚本
 skills/      可由安装器一键安装的 Codex 深度皮肤助手
 menubar/     可选 SwiftBar 菜单插件

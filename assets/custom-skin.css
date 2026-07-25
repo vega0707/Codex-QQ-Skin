@@ -1350,3 +1350,308 @@ html.codex-dream-skin[data-dream-deep-theme="true"] body > #root > div > .app-he
     opacity: min(.72, var(--dream-deep-right-opacity, 1)) !important;
   }
 }
+
+/* —— Neon Storm weather layer (preset-neon-storm) —— */
+/* Black stage for rain contrast, but keep readable panels + light text. */
+html.codex-dream-skin[data-qq-weather="neon-storm"],
+html.codex-dream-skin[data-qq-weather="neon-storm"] body {
+  color-scheme: dark !important;
+  --ds-bg: #000000 !important;
+  --ds-bg-rgb: 0 0 0 !important;
+  --ds-panel: #141a26 !important;
+  --ds-panel-2: #1b2434 !important;
+  --ds-panel-rgb: 20 26 38 !important;
+  --ds-panel-2-rgb: 27 36 52 !important;
+  --ds-text: #eaf3ff !important;
+  --ds-muted: #a8bad4 !important;
+  --ds-text-rgb: 234 243 255 !important;
+  --ds-muted-rgb: 168 186 212 !important;
+  --color-token-text-primary: #eaf3ff !important;
+  --color-token-text-secondary: #a8bad4 !important;
+  --color-token-foreground: #eaf3ff !important;
+  --color-token-text-tertiary: #8aa0c0 !important;
+  --color-token-main-surface-primary: #0c1018 !important;
+  --color-token-main-surface-secondary: #141a26 !important;
+  --color-token-sidebar-surface-primary: #0e1420 !important;
+  --color-token-sidebar-surface-secondary: #141a26 !important;
+  background: #000000 !important;
+  background-image: none !important;
+  color: #eaf3ff !important;
+}
+
+html.codex-dream-skin[data-qq-weather="neon-storm"] body::before,
+html.codex-dream-skin[data-qq-weather="neon-storm"] body::after {
+  content: none !important;
+  background: none !important;
+  background-image: none !important;
+  opacity: 0 !important;
+}
+
+/* Keep the rain stage visible under the task UI — opaque black was covering it. */
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  color: #eaf3ff !important;
+}
+
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface
+  [class~="bg-token-main-surface-primary"],
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface
+  .app-shell-main-content-frame,
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface
+  [class~="h-full"][class~="bg-token-main-surface-primary"] {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* Never paint a full-bleed black ::before over home/task content. */
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface::before,
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface::after,
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface:not(.dream-skin-home-shell)::before,
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface.dream-skin-home-shell::before {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+  background-image: none !important;
+  opacity: 0 !important;
+}
+
+html.codex-dream-skin[data-qq-weather="neon-storm"][data-dream-deep-theme="true"] aside.app-shell-left-panel::after {
+  content: none !important;
+  background: none !important;
+  opacity: 0 !important;
+}
+
+/* Force light ink everywhere Codex still emits light-theme tokens. */
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface,
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface [role="main"],
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface article,
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface [data-turn-key],
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface [class*="_markdown"],
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface [class*="text-token"],
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface p,
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface li,
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface h1,
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface h2,
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface h3,
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface span {
+  color: #eaf3ff !important;
+  text-shadow: none !important;
+}
+
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface [class*="text-token-text-secondary"],
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface [class*="text-token-text-tertiary"],
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface [class*="text-token-input-placeholder"] {
+  color: #a8bad4 !important;
+}
+
+/* Task dialogue cards — solid readable frames on black rain stage. */
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface [data-turn-key],
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface article {
+  background: rgb(16 22 36 / .96) !important;
+  border: 1px solid rgb(78 195 255 / .30) !important;
+  border-radius: 14px !important;
+  padding: 12px 14px !important;
+  box-shadow: 0 8px 20px rgb(0 0 0 / .4) !important;
+  /* Skip backdrop-filter — blur is expensive while rain is already painting. */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Fallback when a turn has no article wrapper — still give markdown a card. */
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface [class*="_markdown"]:not([data-turn-key] [class*="_markdown"]):not(article [class*="_markdown"]) {
+  background: rgb(16 22 36 / .94) !important;
+  border: 1px solid rgb(78 195 255 / .30) !important;
+  border-radius: 14px !important;
+  padding: 14px 16px !important;
+  box-shadow: 0 10px 28px rgb(0 0 0 / .45) !important;
+}
+
+/* Home / new-task: open rain stage above, keep composer pinned to the bottom. */
+html.codex-dream-skin[data-qq-weather="neon-storm"] .dream-skin-home-stack {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 100% !important;
+  justify-content: flex-start !important;
+}
+
+/* Upper zone grows to fill the page so the composer stays at the bottom. */
+html.codex-dream-skin[data-qq-weather="neon-storm"] .dream-skin-home-stack > div:first-child {
+  flex: 1 1 auto !important;
+  min-height: 280px !important;
+  height: auto !important;
+  justify-content: flex-start !important;
+  align-items: stretch !important;
+}
+
+html.codex-dream-skin[data-qq-weather="neon-storm"] .dream-skin-home-stack > div:last-child {
+  flex: 0 0 auto !important;
+  margin-top: auto !important;
+  justify-content: flex-end !important;
+}
+
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface.dream-skin-home-shell
+  .dream-skin-home-stack > div:first-child > div:first-child,
+html.codex-dream-skin[data-qq-weather="neon-storm"] .dream-skin-home-stack > div:first-child > div:first-child {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: #eaf3ff !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+}
+
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface.dream-skin-home-shell
+  .dream-skin-home-stack > div:first-child > div:first-child::before,
+html.codex-dream-skin[data-qq-weather="neon-storm"] .dream-skin-home-stack > div:first-child > div:first-child::before {
+  content: none !important;
+  display: none !important;
+}
+
+/* Keep project title readable, but drop decorative skin overlays. */
+html.codex-dream-skin[data-qq-weather="neon-storm"] .dream-skin-home [data-feature="game-source"],
+html.codex-dream-skin[data-qq-weather="neon-storm"] .dream-skin-home [data-feature="game-source"] * {
+  color: #eaf3ff !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  text-shadow: 0 1px 12px rgb(0 0 0 / .55) !important;
+}
+
+html.codex-dream-skin[data-qq-weather="neon-storm"] .dream-skin-home [data-feature="game-source"]::before,
+html.codex-dream-skin[data-qq-weather="neon-storm"] .dream-skin-home [data-feature="game-source"]::after {
+  content: none !important;
+  display: none !important;
+}
+
+/* Hide the four suggestion cards — leave open rain space. */
+html.codex-dream-skin[data-qq-weather="neon-storm"] .dream-skin-home section[class*="home-suggestions"],
+html.codex-dream-skin[data-qq-weather="neon-storm"] .dream-skin-home .group\/home-suggestions,
+html.codex-dream-skin[data-qq-weather="neon-storm"] .dream-skin-home [class*="home-suggestions"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+html.codex-dream-skin[data-qq-weather="neon-storm"] .composer-surface-chrome,
+html.codex-dream-skin[data-qq-weather="neon-storm"] .dream-skin-home-utility {
+  background: rgb(16 22 36 / .72) !important;
+  border: 1px solid rgb(78 195 255 / .22) !important;
+  color: #eaf3ff !important;
+  box-shadow: 0 12px 28px rgb(0 0 0 / .35) !important;
+}
+
+html.codex-dream-skin[data-qq-weather="neon-storm"] aside.app-shell-left-panel,
+html.codex-dream-skin[data-qq-weather="neon-storm"] aside.app-shell-left-panel button,
+html.codex-dream-skin[data-qq-weather="neon-storm"] aside.app-shell-left-panel a,
+html.codex-dream-skin[data-qq-weather="neon-storm"] aside.app-shell-left-panel [class*="text-token"] {
+  color: #eaf3ff !important;
+}
+
+html.codex-dream-skin[data-qq-weather="neon-storm"] #codex-qq-skin-weather {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.88;
+  /* Avoid mix-blend-mode: screen — full-viewport blend is a steady GPU cost. */
+  mix-blend-mode: normal;
+}
+
+html.codex-dream-skin[data-qq-weather="neon-storm"] #codex-qq-skin-weather canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+html.codex-dream-skin[data-qq-weather="neon-storm"] #codex-qq-skin-weather[data-weather-mode="storm"] {
+  opacity: 0.9;
+}
+
+html.codex-dream-skin[data-qq-weather="neon-storm"] #codex-qq-skin-weather[data-weather-mode="drizzle"] {
+  opacity: 0.7;
+}
+
+html.codex-dream-skin[data-qq-weather="neon-storm"] #codex-qq-skin-weather[data-weather-mode="calm"] {
+  opacity: 0.35;
+}
+
+html.codex-dream-skin[data-qq-weather="neon-storm"] #root,
+html.codex-dream-skin[data-qq-weather="neon-storm"] body > div:not(#codex-qq-skin-weather):not(#codex-qq-skin-toggle):not(#codex-qq-skin-library-menu) {
+  position: relative;
+  z-index: 1;
+}
+
+/* Hide legacy status HUD if an older inject left it behind. */
+html.codex-dream-skin[data-qq-weather="neon-storm"] #codex-qq-skin-weather-hud {
+  display: none !important;
+}
+
+/* Right summary / environment panel — no more white card + light ink. */
+html.codex-dream-skin[data-qq-weather="neon-storm"]
+  [data-pip-obstacle="thread-summary-panel"],
+html.codex-dream-skin[data-qq-weather="neon-storm"]
+  [data-pip-obstacle="thread-summary-panel"] .rounded-3xl,
+html.codex-dream-skin[data-qq-weather="neon-storm"]
+  [data-pip-obstacle="thread-summary-panel"] [class*="bg-token-dropdown-background"],
+html.codex-dream-skin[data-qq-weather="neon-storm"]
+  [data-pip-obstacle="thread-summary-panel"] [class*="bg-token-main-surface"] {
+  background: rgb(16 22 36 / .94) !important;
+  background-color: rgb(16 22 36 / .94) !important;
+  color: #eaf3ff !important;
+  border-color: rgb(78 195 255 / .28) !important;
+  box-shadow: 0 12px 28px rgb(0 0 0 / .4) !important;
+}
+
+html.codex-dream-skin[data-qq-weather="neon-storm"]
+  [data-pip-obstacle="thread-summary-panel"],
+html.codex-dream-skin[data-qq-weather="neon-storm"]
+  [data-pip-obstacle="thread-summary-panel"] button,
+html.codex-dream-skin[data-qq-weather="neon-storm"]
+  [data-pip-obstacle="thread-summary-panel"] a,
+html.codex-dream-skin[data-qq-weather="neon-storm"]
+  [data-pip-obstacle="thread-summary-panel"] span,
+html.codex-dream-skin[data-qq-weather="neon-storm"]
+  [data-pip-obstacle="thread-summary-panel"] p,
+html.codex-dream-skin[data-qq-weather="neon-storm"]
+  [data-pip-obstacle="thread-summary-panel"] [class*="text-token"] {
+  color: #eaf3ff !important;
+}
+
+html.codex-dream-skin[data-qq-weather="neon-storm"]
+  [data-pip-obstacle="thread-summary-panel"] [class*="text-token-text-secondary"],
+html.codex-dream-skin[data-qq-weather="neon-storm"]
+  [data-pip-obstacle="thread-summary-panel"] [class*="text-token-text-tertiary"] {
+  color: #a8bad4 !important;
+}
+
+html.codex-dream-skin[data-qq-weather="neon-storm"]
+  [data-pip-obstacle="thread-summary-panel"] svg {
+  color: #7aa7ff !important;
+}
+
+/* Upgrade / quota banners: keep dark cards with light text. */
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface
+  [class*="bg-token-bg-primary"],
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface
+  [class*="bg-white"],
+html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface
+  .sticky [class*="rounded"][class*="bg-"] {
+  background: rgb(16 22 36 / .94) !important;
+  color: #eaf3ff !important;
+  border-color: rgb(78 195 255 / .24) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.codex-dream-skin[data-qq-weather="neon-storm"] #codex-qq-skin-weather {
+    opacity: 0.28;
+  }
+}

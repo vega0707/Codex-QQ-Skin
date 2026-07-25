@@ -27,6 +27,13 @@ if ($LASTEXITCODE -ne 0) { throw 'Injector payload check failed.' }
 $bumblebee = Join-Path $root 'presets\preset-bumblebee'
 & $node (Join-Path $root 'scripts\deep-theme.mjs') validate --theme-dir $bumblebee | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'Bundled Bumblebee preset validation failed.' }
+$neonStorm = Join-Path $root 'presets\preset-neon-storm'
+& $node (Join-Path $root 'scripts\deep-theme.mjs') validate --theme-dir $neonStorm | Out-Null
+if ($LASTEXITCODE -ne 0) { throw 'Bundled Neon Storm preset validation failed.' }
+$guiSource = Get-Content -LiteralPath (Join-Path $root 'windows-app\Program.cs') -Raw
+if ($guiSource -notmatch 'preset-neon-storm' -or $guiSource -notmatch '应用内置霓虹雨夜皮肤') {
+  throw 'Windows GUI installer must expose the bundled Neon Storm preset.'
+}
 $guiBuilder = Get-Content -LiteralPath (Join-Path $root 'scripts\windows\build-gui-installer.ps1') -Raw
 if ($guiBuilder -notmatch "foreach \(\`$directory in @\('assets','presets','scripts','skills'\)\)") {
   throw 'Windows GUI installer must embed the bundled presets directory.'

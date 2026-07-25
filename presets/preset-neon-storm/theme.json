@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 2,
+  "kind": "deep-custom",
+  "id": "preset-neon-storm",
+  "name": "霓虹雨夜 · Storm Codex",
+  "tagline": "任务进行时霓虹雨下不停，完成后雷暴撕裂夜空。",
+  "appearance": "dark",
+  "assets": {
+    "background": "background.png",
+    "foregroundRight": "foreground-right.png",
+    "sidebarCharacter": "sidebar-character.png",
+    "watermark": "watermark.png",
+    "brandEmblem": "brand-emblem.png"
+  },
+  "brand": {
+    "title": "CODEX",
+    "subtitle": "NEON STORM"
+  },
+  "colors": {
+    "background": "#000000",
+    "panel": "#141a26",
+    "panelAlt": "#1b2434",
+    "accent": "#4ec3ff",
+    "accentAlt": "#ff5ec8",
+    "secondary": "#7aa7ff",
+    "highlight": "#d8f0ff",
+    "text": "#eaf3ff",
+    "muted": "#a8bad4",
+    "line": "rgba(78, 195, 255, 0.28)"
+  },
+  "art": {
+    "safeArea": "none",
+    "taskMode": "off"
+  },
+  "layout": {
+    "foregroundRight": {
+      "width": 520,
+      "right": -40,
+      "bottom": -160,
+      "opacity": 0
+    },
+    "sidebarCharacter": {
+      "size": 130,
+      "positionY": 28,
+      "opacity": 0
+    },
+    "watermark": {
+      "width": 150,
+      "positionX": 58,
+      "positionY": 10,
+      "opacity": 0
+    }
+  }
+}

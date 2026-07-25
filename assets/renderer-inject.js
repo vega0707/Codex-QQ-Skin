@@ -12,6 +12,8 @@
   const RETRO_PROFILE_ID = "codex-qq-skin-retro-profile";
   const TOGGLE_ID = "codex-qq-skin-toggle";
   const LIBRARY_MENU_ID = "codex-qq-skin-library-menu";
+  const WEATHER_ID = "codex-qq-skin-weather";
+  const WEATHER_HUD_ID = "codex-qq-skin-weather-hud";
   const ENABLED_STORAGE_KEY = "codex-qq-skin-enabled";
   const MODE_STORAGE_KEY = "codex-qq-skin-mode";
   const LIBRARY_SWITCH_KEY = "codex-qq-skin-library-switch";
@@ -19,6 +21,7 @@
   const USAGE_NET_MODE_KEY = "codex-qq-skin-usage-net-mode";
   const USAGE_REFRESH_KEY = "codex-qq-skin-usage-refresh";
   const NATIVE_APPEARANCE_STATE_KEY = "__CODEX_QQ_SKIN_NATIVE_APPEARANCE__";
+  const NEON_STORM_THEME_IDS = new Set(["preset-neon-storm", "custom-neon-storm"]);
   const LIBRARY_THEMES = Array.isArray(libraryThemes)
     ? libraryThemes.filter((item) => item && typeof item.id === "string" && /^[A-Za-z0-9_-]{1,80}$/.test(item.id))
     : [];
@@ -27,7 +30,7 @@
     "data-dream-art-wide", "data-dream-art-safe", "data-dream-task-mode",
     "data-dream-art-safe-area", "data-dream-art-task-mode", "data-dream-art-aspect",
     "data-dream-art-ready", "data-dream-art-fit", "data-dream-three-pane", "data-dream-summary-state", "data-dream-left-sidebar",
-    "data-qq-usage-mode", "data-qq-usage-state",
+    "data-qq-usage-mode", "data-qq-usage-state", "data-qq-weather",
   ];
   const VERSION = __QQ_SKIN_VERSION_JSON__;
   const STYLE_REVISION = __QQ_SKIN_STYLE_REVISION_JSON__;
@@ -180,6 +183,7 @@
     document.removeEventListener("click", previous.routeInteractionHandler, true);
   }
   previous?.soundMonitor?.cleanup?.();
+  previous?.weatherMonitor?.destroy?.();
   // Rebuild floating chrome that closes over the previous generation. Keep the
   // shared <style id="codex-qq-skin-style"> node when a skin stays enabled so
   // reinject can reuse it; native mode must strip every painted leftover.
@@ -193,6 +197,8 @@
   document.getElementById(RETRO_SHELL_ID)?.remove();
   document.getElementById(RETRO_PROFILE_ID)?.remove();
   document.getElementById(CHROME_ID)?.remove();
+  document.getElementById(WEATHER_ID)?.remove();
+  document.getElementById(WEATHER_HUD_ID)?.remove();
   document.querySelectorAll(".dream-retro-profile-host").forEach((node) =>
     node.classList.remove("dream-retro-profile-host"));
   document.querySelectorAll(".qq-skin-home-stack, .dream-skin-home-stack").forEach((node) =>
@@ -1116,6 +1122,480 @@
     };
   };
   const soundMonitor = createSoundMonitor();
+
+  /* Neon Storm weather layer — adapted from 粒子星球 neonRain + lightning.
+     Performance-tuned: DPR 1, capped particle counts, ~24–36 FPS, no mix-blend,
+     batched strokes, auto wind only. Active only for neon-storm in custom mode. */
+  const createWeatherController = () => {
+    const TAU = Math.PI * 2;
+    const rand = (a, b) => a + Math.random() * (b - a);
+    const MODE_SCALE = { drizzle: 0.16, rain: 0.28, storm: 0.22, calm: 0.08 };
+    const MODE_FPS = { drizzle: 24, rain: 30, storm: 36, calm: 8 };
+    const DROP_BASE = 420;
+
+    let host = null;
+    let canvas = null;
+    let ctx = null;
+    let raf = 0;
+    let running = false;
+    let last = 0;
+    let acc = 0;
+    let t = 0;
+    let mode = "drizzle";
+    let targetMode = "drizzle";
+    let fade = 1;
+    let w = 0;
+    let h = 0;
+    let dpr = 1;
+    let flash = 0;
+    let stormTimer = 0;
+    let boltTimer = 0;
+    let wind = 0;
+    let reduced = false;
+    let visible = true;
+    let currentStatus = "idle";
+    let drops = [];
+    let spl = [];
+    let rips = [];
+    let bolts = [];
+    let rain = [];
+    let io = null;
+    let mq = null;
+    let resizeTimer = null;
+
+    const isActive = () =>
+      skinMode === "custom" && NEON_STORM_THEME_IDS.has(String(THEME?.id || CUSTOM_THEME?.id || ""));
+
+    const densFor = (key) => MODE_SCALE[key] ?? MODE_SCALE.drizzle;
+    const fpsFor = (key) => MODE_FPS[key] ?? 24;
+
+    const destroy = () => {
+      running = false;
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = null;
+      io?.disconnect();
+      io = null;
+      if (mq && mq._handler) {
+        try { mq.removeEventListener("change", mq._handler); } catch {}
+      }
+      mq = null;
+      document.getElementById(WEATHER_ID)?.remove();
+      document.getElementById(WEATHER_HUD_ID)?.remove();
+      host = null;
+      canvas = null;
+      ctx = null;
+      drops = [];
+      spl = [];
+      rips = [];
+      bolts = [];
+      rain = [];
+      document.documentElement?.removeAttribute("data-qq-weather");
+    };
+
+    const seedRain = (scale) => {
+      const n = Math.max(36, Math.round(DROP_BASE * scale));
+      drops = new Array(n);
+      for (let i = 0; i < n; i += 1) {
+        drops[i] = {
+          x: rand(-40, w + 40),
+          y: rand(-h, h),
+          v: rand(780, 1280),
+          len: rand(18, 40),
+          a: rand(0.34, 0.72),
+        };
+      }
+      spl = [];
+      rips = [];
+    };
+
+    const seedStormRain = (scale) => {
+      const n = Math.max(28, Math.round(120 * scale));
+      rain = new Array(n);
+      for (let i = 0; i < n; i += 1) {
+        rain[i] = { x: rand(0, w), y: rand(0, h), v: rand(620, 980) };
+      }
+      bolts = [];
+      flash = 0;
+      boltTimer = 0.4;
+    };
+
+    const makeBolt = (x0, big) => {
+      if (!w || !h) return;
+      const segs = [];
+      let x = x0;
+      let y = -10;
+      const pts = [{ x, y }];
+      while (y < h * rand(0.74, 0.92)) {
+        y += rand(18, 30);
+        x += rand(-28, 28);
+        pts.push({ x, y });
+        if (Math.random() < 0.16) {
+          let bx = x;
+          let by = y;
+          const bang = rand(0.4, 1.1) * (Math.random() < 0.5 ? -1 : 1);
+          const bpts = [{ x: bx, y: by }];
+          const bl = Math.floor(rand(3, 6));
+          for (let i = 0; i < bl; i += 1) {
+            bx += Math.sin(bang) * rand(10, 18);
+            by += Math.cos(Math.abs(bang)) * rand(8, 16);
+            bpts.push({ x: bx, y: by });
+          }
+          segs.push({ pts: bpts, ww: 0.75 });
+        }
+      }
+      segs.push({ pts, ww: 2 });
+      bolts.push({ segs, life: 1, dec: rand(1.5, 2.4), big: !!big });
+      if (bolts.length > 5) bolts.shift();
+      flash = Math.max(flash, big ? 0.34 : 0.18);
+    };
+
+    const resize = () => {
+      if (!canvas || !host) return;
+      const box = host.getBoundingClientRect?.() || { width: window.innerWidth, height: window.innerHeight };
+      w = Math.max(2, Math.round(box.width || window.innerWidth || 2));
+      h = Math.max(2, Math.round(box.height || window.innerHeight || 2));
+      // Cap at 1× — Retina 2× roughly quadruples fill cost for little rain benefit.
+      dpr = 1;
+      canvas.width = w;
+      canvas.height = h;
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+      ctx?.setTransform(1, 0, 0, 1, 0, 0);
+      const dens = densFor(mode === "calm" ? "calm" : mode);
+      const target = Math.round(DROP_BASE * dens);
+      if (!drops.length || Math.abs(drops.length - target) > 28) seedRain(dens);
+      if (mode === "storm" && !rain.length) seedStormRain(0.45);
+    };
+
+    const scheduleResize = () => {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        resizeTimer = null;
+        resize();
+      }, 120);
+    };
+
+    const groundY = () => Math.max(2, h - 2);
+
+    const renderRain = (alpha) => {
+      if (!ctx || alpha < 0.02) return;
+      const gy = groundY();
+      const wx = wind * 0.03;
+      ctx.globalAlpha = alpha;
+      ctx.lineWidth = 1.15;
+      ctx.strokeStyle = "rgba(180,215,255,0.55)";
+      ctx.beginPath();
+      for (let i = 0; i < drops.length; i += 1) {
+        const d = drops[i];
+        ctx.moveTo(d.x, d.y);
+        ctx.lineTo(d.x - wx * d.len * 0.12, d.y - d.len);
+      }
+      ctx.stroke();
+      if (spl.length) {
+        ctx.fillStyle = "rgba(220,235,255,0.7)";
+        ctx.beginPath();
+        for (let i = 0; i < spl.length; i += 1) {
+          const s = spl[i];
+          ctx.moveTo(s.x + 1.2, s.y);
+          ctx.arc(s.x, s.y, 1.2, 0, TAU);
+        }
+        ctx.fill();
+      }
+      if (rips.length) {
+        ctx.strokeStyle = "rgba(170,210,255,0.35)";
+        ctx.lineWidth = 1;
+        for (let i = 0; i < rips.length; i += 1) {
+          const r = rips[i];
+          ctx.beginPath();
+          ctx.ellipse(r.x, r.y, r.r, r.r * 0.28, 0, 0, TAU);
+          ctx.stroke();
+        }
+      }
+      ctx.globalAlpha = 1;
+    };
+
+    const renderStorm = (alpha) => {
+      if (!ctx || alpha < 0.02) return;
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = "rgba(150,180,230,0.18)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let i = 0; i < rain.length; i += 1) {
+        const r = rain[i];
+        ctx.moveTo(r.x, r.y);
+        ctx.lineTo(r.x + r.v * 0.008, r.y - r.v * 0.04);
+      }
+      ctx.stroke();
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      for (let bi = 0; bi < bolts.length; bi += 1) {
+        const b = bolts[bi];
+        const L = Math.max(0, Math.min(1, b.life));
+        for (let si = 0; si < b.segs.length; si += 1) {
+          const s = b.segs[si];
+          // Two passes instead of three: soft glow + core.
+          for (const pass of [{ ww: 6, a: 0.18, c: "205,220,255" }, { ww: 1.4, a: 0.92, c: "255,255,255" }]) {
+            ctx.strokeStyle = `rgba(${pass.c},${pass.a * L})`;
+            ctx.lineWidth = pass.ww * s.ww;
+            ctx.beginPath();
+            for (let i = 0; i < s.pts.length; i += 1) {
+              const p = s.pts[i];
+              if (i) ctx.lineTo(p.x, p.y);
+              else ctx.moveTo(p.x, p.y);
+            }
+            ctx.stroke();
+          }
+        }
+      }
+      if (flash > 0.01) {
+        ctx.fillStyle = `rgba(225,235,255,${flash * 0.28})`;
+        ctx.fillRect(0, 0, w, h);
+      }
+      ctx.globalAlpha = 1;
+      ctx.lineCap = "butt";
+    };
+
+    const update = (dt) => {
+      if (mode !== targetMode) {
+        fade = Math.max(0, fade - dt * 1.15);
+        if (fade <= 0.02) {
+          mode = targetMode;
+          fade = 0;
+          seedRain(densFor(mode));
+          if (mode === "storm") seedStormRain(0.45);
+          else rain = [];
+        }
+      } else if (fade < 1) fade = Math.min(1, fade + dt * 1.2);
+
+      // Cheap auto wind — no pointer listeners.
+      wind = Math.sin(t * 0.35) * 70;
+      const spd = mode === "drizzle" ? 0.7 : 1;
+      const gy = groundY();
+      if (mode !== "calm" && mode !== "storm") {
+        for (let i = 0; i < drops.length; i += 1) {
+          const d = drops[i];
+          d.y += d.v * spd * dt;
+          d.x += wind * dt;
+          if (d.y > gy) {
+            if (spl.length < 36 && Math.random() < 0.35) {
+              spl.push({
+                x: d.x, y: gy,
+                vx: rand(-40, 40) + wind * 0.2, vy: -rand(28, 90),
+                life: 1,
+              });
+            }
+            if (rips.length < 16 && Math.random() < 0.22) {
+              rips.push({ x: d.x, y: gy, r: 2, life: 1 });
+            }
+            d.y = rand(-70, -8);
+            d.x = rand(-40, w + 40);
+          }
+        }
+      }
+      for (let i = spl.length - 1; i >= 0; i -= 1) {
+        const s = spl[i];
+        s.vy += 600 * dt;
+        s.x += s.vx * dt;
+        s.y += s.vy * dt;
+        s.life -= dt * 2.6;
+        if (s.life <= 0 || s.y > gy + 4) spl.splice(i, 1);
+      }
+      for (let i = rips.length - 1; i >= 0; i -= 1) {
+        const r = rips[i];
+        r.r += 80 * dt;
+        r.life -= dt * 2;
+        if (r.life <= 0) rips.splice(i, 1);
+      }
+
+      if (mode === "storm" || targetMode === "storm") {
+        boltTimer -= dt;
+        if (boltTimer <= 0) {
+          boltTimer = rand(0.5, 1.3);
+          makeBolt(rand(w * 0.12, w * 0.88), Math.random() < 0.4);
+        }
+        for (let i = 0; i < rain.length; i += 1) {
+          const r = rain[i];
+          r.y += r.v * dt;
+          r.x -= r.v * 0.16 * dt;
+          if (r.y > h) {
+            r.y = -20;
+            r.x = rand(0, w * 1.15);
+          }
+        }
+        for (let i = bolts.length - 1; i >= 0; i -= 1) {
+          bolts[i].life -= bolts[i].dec * dt;
+          if (bolts[i].life <= 0) bolts.splice(i, 1);
+        }
+        flash = Math.max(0, flash - dt * 1.9);
+        if (stormTimer > 0) {
+          stormTimer -= dt;
+          if (stormTimer <= 0 && currentStatus !== "completed") {
+            setMode(statusToMode(currentStatus === "offline" ? "offline" : "idle"), { hard: false });
+          }
+        }
+      }
+    };
+
+    const paint = () => {
+      if (!ctx) return;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+      if (mode === "calm" && targetMode === "calm") return;
+      if (mode === "storm" || targetMode === "storm") {
+        if (mode === "storm") renderStorm(Math.max(fade, 0.4));
+        else {
+          renderRain(1 - fade);
+          renderStorm(fade);
+        }
+      } else {
+        renderRain(mode === targetMode ? Math.max(0.45, fade) : Math.max(fade, 0.25));
+      }
+    };
+
+    const loop = (now) => {
+      if (!running) return;
+      raf = requestAnimationFrame(loop);
+      let dt = (now - last) / 1000;
+      last = now;
+      if (dt > 0.05) dt = 0.05;
+      t += dt;
+      acc += dt;
+      const frame = 1 / fpsFor(targetMode === "storm" || mode === "storm" ? "storm" : targetMode);
+      if (acc < frame) return;
+      // Consume whole budget so we don't cascade catch-up frames.
+      acc = 0;
+      if (!reduced) update(dt > frame ? dt : frame);
+      paint();
+    };
+
+    const start = () => {
+      if (running || !canvas || reduced) return;
+      running = true;
+      last = performance.now();
+      acc = 0;
+      raf = requestAnimationFrame(loop);
+    };
+
+    const stop = () => {
+      running = false;
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+    };
+
+    const statusToMode = (status) => {
+      if (status === "running" || status === "approval") return "rain";
+      if (status === "completed") return "storm";
+      if (status === "offline") return "calm";
+      return "drizzle";
+    };
+
+    const setMode = (next, { hard = false } = {}) => {
+      if (next === targetMode && !hard) return;
+      targetMode = next;
+      if (hard) {
+        mode = next;
+        fade = 1;
+        seedRain(densFor(mode));
+        if (mode === "storm") seedStormRain(0.45);
+        else rain = [];
+      } else fade = Math.min(fade, 0.85);
+      if (host) host.dataset.weatherMode = targetMode;
+      if (targetMode === "calm" && mode === "calm") {
+        paint();
+      } else if (!running && !reduced) start();
+    };
+
+    const setStatus = (status) => {
+      currentStatus = status || "idle";
+      if (status === "completed") {
+        setMode("storm");
+        stormTimer = 3.6;
+        makeBolt(rand(w * 0.2, w * 0.8), true);
+        makeBolt(rand(w * 0.2, w * 0.8), Math.random() < 0.6);
+      } else {
+        setMode(statusToMode(status));
+        if (status !== "completed") stormTimer = 0;
+      }
+    };
+
+    const mount = () => {
+      if (!document.body) return;
+      document.getElementById(WEATHER_HUD_ID)?.remove();
+      host = document.getElementById(WEATHER_ID);
+      if (!host) {
+        host = document.createElement("div");
+        host.id = WEATHER_ID;
+        host.setAttribute("aria-hidden", "true");
+        canvas = document.createElement("canvas");
+        host.appendChild(canvas);
+        document.body.appendChild(host);
+      } else {
+        canvas = host.querySelector("canvas") || document.createElement("canvas");
+        if (!canvas.parentElement) host.appendChild(canvas);
+      }
+      // alpha:true + no desync fill — rain drawn on transparent buffer over black body.
+      ctx = canvas.getContext("2d", { alpha: true, desynchronized: true }) || canvas.getContext("2d");
+
+      try {
+        mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+        reduced = Boolean(mq.matches);
+        mq._handler = () => {
+          reduced = Boolean(mq.matches);
+          if (reduced) {
+            stop();
+            paint();
+          } else if (visible && document.visibilityState !== "hidden") start();
+        };
+        mq.addEventListener("change", mq._handler);
+      } catch { reduced = false; }
+
+      if (typeof IntersectionObserver === "function") {
+        io?.disconnect();
+        io = new IntersectionObserver(([entry]) => {
+          visible = entry.isIntersecting !== false;
+          if (visible && document.visibilityState !== "hidden" && !reduced) start();
+          else stop();
+        });
+        io.observe(host);
+      }
+
+      if (host.dataset.qqWeatherBound !== "true") {
+        host.dataset.qqWeatherBound = "true";
+        window.addEventListener("resize", scheduleResize, { passive: true });
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "hidden") stop();
+          else if (visible && !reduced) start();
+        });
+      }
+
+      setAttribute(document.documentElement, "data-qq-weather", "neon-storm");
+      resize();
+      setStatus(soundMonitor.status || "idle");
+      paint();
+      if (!reduced) start();
+    };
+
+    return {
+      ensure() {
+        if (!isActive()) {
+          destroy();
+          return;
+        }
+        mount();
+      },
+      setStatus(status) {
+        if (!isActive()) return;
+        if (!host) mount();
+        setStatus(status);
+      },
+      destroy,
+      get active() { return isActive() && Boolean(host); },
+    };
+  };
+
+  const weatherMonitor = createWeatherController();
 
   const findPinnedSummaryToggle = () => {
     for (const button of document.querySelectorAll('button[aria-label]')) {
@@ -2346,8 +2826,11 @@
       removeQQDecorations();
       setAttribute(root, "data-dream-three-pane", "false");
       setAttribute(root, "data-dream-summary-state", "unavailable");
+      weatherMonitor.ensure();
+      ensureToggleButton();
       return;
     }
+    weatherMonitor.destroy();
     ensureRetroShell();
     syncRetroToolbarActions();
     syncRetroWindowControls();
@@ -2518,10 +3001,13 @@
     metrics.ensureCalls += 1;
     const shell = rootPass ? applyRootState(root) : null;
     soundMonitor.scan();
+    weatherMonitor.ensure();
+    if (weatherMonitor.active) weatherMonitor.setStatus(soundMonitor.status);
     if (route) syncRouteState(shell, { layout });
   };
 
   const removeSkinVisuals = () => {
+    weatherMonitor.destroy();
     const root = document.documentElement;
     root?.classList.remove("codex-qq-skin", "codex-dream-skin");
     root?.removeAttribute(SHELL_ATTR);
@@ -2548,6 +3034,8 @@
     document.getElementById(RIGHT_TRAY_ID)?.remove();
     document.getElementById(RETRO_SHELL_ID)?.remove();
     document.getElementById(RETRO_PROFILE_ID)?.remove();
+    document.getElementById(WEATHER_ID)?.remove();
+    document.getElementById(WEATHER_HUD_ID)?.remove();
     document.querySelectorAll(".dream-retro-profile-host").forEach((node) =>
       node.classList.remove("dream-retro-profile-host"));
     document.querySelectorAll(".dream-retro-window-control").forEach((button) =>
@@ -2797,6 +3285,7 @@
       document.removeEventListener("click", state.routeInteractionHandler, true);
     }
     state?.soundMonitor?.cleanup?.();
+    state?.weatherMonitor?.destroy?.();
     if (state?.mediaHandler && state?.mediaQuery) {
       try { state.mediaQuery.removeEventListener("change", state.mediaHandler); } catch {}
     }
@@ -2876,6 +3365,7 @@
     resizeHandler,
     routeInteractionHandler,
     soundMonitor,
+    weatherMonitor,
     mediaQuery,
     mediaHandler,
     artUrl,
