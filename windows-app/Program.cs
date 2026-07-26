@@ -16,8 +16,8 @@ using System.Web.Script.Serialization;
 [assembly: AssemblyDescription("ChatGPT QQ Skin native Windows installer")]
 [assembly: AssemblyCompany("Codex QQ Skin")]
 [assembly: AssemblyProduct("ChatGPT QQ Skin")]
-[assembly: AssemblyVersion("2.6.2.0")]
-[assembly: AssemblyFileVersion("2.6.2.0")]
+[assembly: AssemblyVersion("2.6.3.0")]
+[assembly: AssemblyFileVersion("2.6.3.0")]
 
 namespace CodexQQSkinSetup
 {
@@ -43,10 +43,13 @@ namespace CodexQQSkinSetup
         private readonly Label statusLabel;
         private readonly ProgressBar progress;
         private readonly LinkLabel releaseLink;
+        private readonly Button cancelUpdateButton;
         private readonly TextBox log;
         private string currentReleaseUrl;
+        private WebClient updateClient;
+        private volatile bool updateCancelled;
 
-        private const string CurrentVersion = "2.6.2";
+        private const string CurrentVersion = "2.6.3";
         private const string LatestReleaseApi = "https://api.github.com/repos/zhulin025/Codex-QQ-Skin/releases/latest";
 
         public MainForm(string[] args)
@@ -90,11 +93,25 @@ namespace CodexQQSkinSetup
 
             progress = new ProgressBar { Location = new Point(36, 332), Size = new Size(588, 7), Style = ProgressBarStyle.Marquee, Visible = false };
             statusLabel = new Label { Text = "准备就绪", AutoSize = false, Location = new Point(36, 353), Size = new Size(588, 28), ForeColor = Color.FromArgb(55, 68, 93) };
-            releaseLink = new LinkLabel { Text = "下载太慢？前往 GitHub Release 手动下载", AutoSize = false, TextAlign = ContentAlignment.MiddleLeft, Location = new Point(36, 378), Size = new Size(588, 24), Visible = false };
+            cancelUpdateButton = new Button
+            {
+                Text = "取消下载",
+                Location = new Point(36, 378),
+                Size = new Size(100, 28),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(120, 132, 150),
+                ForeColor = Color.White,
+                Visible = false,
+                Cursor = Cursors.Hand
+            };
+            cancelUpdateButton.FlatAppearance.BorderSize = 0;
+            cancelUpdateButton.Click += delegate { CancelUpdateDownload(); };
+            releaseLink = new LinkLabel { Text = "下载太慢？前往 GitHub Release 手动下载", AutoSize = false, TextAlign = ContentAlignment.MiddleLeft, Location = new Point(148, 380), Size = new Size(476, 24), Visible = false };
             releaseLink.LinkClicked += delegate { OpenReleasePage(); };
-            log = new TextBox { Location = new Point(36, 410), Size = new Size(588, 196), Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, BackColor = Color.White, BorderStyle = BorderStyle.FixedSingle, Font = new Font("Consolas", 9F) };
+            log = new TextBox { Location = new Point(36, 416), Size = new Size(588, 190), Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, BackColor = Color.White, BorderStyle = BorderStyle.FixedSingle, Font = new Font("Consolas", 9F) };
             Controls.Add(progress);
             Controls.Add(statusLabel);
+            Controls.Add(cancelUpdateButton);
             Controls.Add(releaseLink);
             Controls.Add(log);
             Shown += async delegate { if (Array.IndexOf(args, "--updated") < 0) await CheckForUpdatesAsync(); };
@@ -132,6 +149,9 @@ namespace CodexQQSkinSetup
             if (installer == null || checksum == null) throw new InvalidOperationException("最新 Release 缺少 Windows 安装包或 SHA-256 校验文件。");
             currentReleaseUrl = release.html_url;
             releaseLink.Visible = true;
+            cancelUpdateButton.Visible = true;
+            cancelUpdateButton.Enabled = true;
+            updateCancelled = false;
             progress.Style = ProgressBarStyle.Continuous;
             progress.Minimum = 0;
             progress.Maximum = 100;
@@ -144,8 +164,10 @@ namespace CodexQQSkinSetup
                 string expected;
                 using (WebClient client = NewWebClient())
                 {
+                    updateClient = client;
                     client.DownloadProgressChanged += delegate(object sender, DownloadProgressChangedEventArgs e)
                     {
+                        if (updateCancelled) return;
                         BeginInvoke((Action)(delegate
                         {
                             long total = e.TotalBytesToReceive > 0 ? e.TotalBytesToReceive : installer.size;
@@ -154,9 +176,24 @@ namespace CodexQQSkinSetup
                             statusLabel.Text = DownloadStatus(release.tag_name, e.BytesReceived, total, percent);
                         }));
                     };
-                    await client.DownloadFileTaskAsync(installer.browser_download_url, target);
-                    expected = (await client.DownloadStringTaskAsync(checksum.browser_download_url)).Split((char[])null, StringSplitOptions.RemoveEmptyEntries)[0].ToLowerInvariant();
+                    try
+                    {
+                        await client.DownloadFileTaskAsync(installer.browser_download_url, target);
+                        if (updateCancelled) throw new OperationCanceledException("用户取消了下载。");
+                        expected = (await client.DownloadStringTaskAsync(checksum.browser_download_url)).Split((char[])null, StringSplitOptions.RemoveEmptyEntries)[0].ToLowerInvariant();
+                    }
+                    catch (WebException ex)
+                    {
+                        if (updateCancelled || ex.Status == WebExceptionStatus.RequestCanceled)
+                            throw new OperationCanceledException("用户取消了下载。", ex);
+                        throw;
+                    }
+                    finally
+                    {
+                        if (object.ReferenceEquals(updateClient, client)) updateClient = null;
+                    }
                 }
+                if (updateCancelled) throw new OperationCanceledException("用户取消了下载。");
                 string actual;
                 using (SHA256 sha = SHA256.Create()) using (FileStream stream = File.OpenRead(target)) actual = BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
                 if (expected.Length != 64 || expected != actual) { File.Delete(target); throw new InvalidDataException("安装包校验失败，已取消更新。"); }
@@ -171,6 +208,15 @@ namespace CodexQQSkinSetup
                 BeginInvoke((Action)(delegate { Close(); }));
                 return "新版本安装程序已启动。";
             });
+        }
+
+        private void CancelUpdateDownload()
+        {
+            if (updateClient == null && !cancelUpdateButton.Visible) return;
+            updateCancelled = true;
+            cancelUpdateButton.Enabled = false;
+            statusLabel.Text = "正在取消下载…";
+            try { if (updateClient != null) updateClient.CancelAsync(); } catch { }
         }
 
         private static string DownloadStatus(string tag, long received, long total, int percent)
@@ -337,6 +383,11 @@ namespace CodexQQSkinSetup
                 statusLabel.Text = await action();
                 MessageBox.Show(this, statusLabel.Text, "ChatGPT QQ Skin", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
+            catch (OperationCanceledException)
+            {
+                statusLabel.Text = "已取消下载";
+                AppendLog("用户取消了更新下载。");
+            }
             catch (Exception ex)
             {
                 statusLabel.Text = "操作失败";
@@ -353,6 +404,10 @@ namespace CodexQQSkinSetup
             }
             finally
             {
+                cancelUpdateButton.Visible = false;
+                cancelUpdateButton.Enabled = true;
+                updateCancelled = false;
+                updateClient = null;
                 progress.Visible = false;
                 progress.Style = ProgressBarStyle.Marquee;
                 progress.Value = 0;

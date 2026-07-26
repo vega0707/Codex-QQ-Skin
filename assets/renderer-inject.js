@@ -14,6 +14,7 @@
   const LIBRARY_MENU_ID = "codex-qq-skin-library-menu";
   const WEATHER_ID = "codex-qq-skin-weather";
   const WEATHER_HUD_ID = "codex-qq-skin-weather-hud";
+  const WEATHER_AUDIO_ID = "codex-qq-skin-weather-audio";
   const ENABLED_STORAGE_KEY = "codex-qq-skin-enabled";
   const MODE_STORAGE_KEY = "codex-qq-skin-mode";
   const LIBRARY_SWITCH_KEY = "codex-qq-skin-library-switch";
@@ -30,7 +31,8 @@
     "data-dream-art-wide", "data-dream-art-safe", "data-dream-task-mode",
     "data-dream-art-safe-area", "data-dream-art-task-mode", "data-dream-art-aspect",
     "data-dream-art-ready", "data-dream-art-fit", "data-dream-three-pane", "data-dream-summary-state", "data-dream-left-sidebar",
-    "data-qq-usage-mode", "data-qq-usage-state", "data-qq-weather",
+    "data-qq-usage-mode", "data-qq-usage-state", "data-qq-weather", "data-qq-settings",
+    "data-qq-weather-audio",
   ];
   const VERSION = __QQ_SKIN_VERSION_JSON__;
   const STYLE_REVISION = __QQ_SKIN_STYLE_REVISION_JSON__;
@@ -199,6 +201,7 @@
   document.getElementById(CHROME_ID)?.remove();
   document.getElementById(WEATHER_ID)?.remove();
   document.getElementById(WEATHER_HUD_ID)?.remove();
+  document.getElementById(WEATHER_AUDIO_ID)?.remove();
   document.querySelectorAll(".dream-retro-profile-host").forEach((node) =>
     node.classList.remove("dream-retro-profile-host"));
   document.querySelectorAll(".qq-skin-home-stack, .dream-skin-home-stack").forEach((node) =>
@@ -1162,12 +1165,260 @@
     let io = null;
     let mq = null;
     let resizeTimer = null;
+    let weatherAudio = null;
+    let rainGainNode = null;
+    let rainSource = null;
+    let rainFilter = null;
+    let lastThunderAt = 0;
+    let audioTick = 0;
+    let weatherSoundEnabled = true;
+    try {
+      const savedWeatherSound = window.localStorage?.getItem("codex-qq-skin-weather-sound-enabled");
+      if (savedWeatherSound === "true" || savedWeatherSound === "false") {
+        weatherSoundEnabled = savedWeatherSound === "true";
+      }
+    } catch {}
 
     const isActive = () =>
       skinMode === "custom" && NEON_STORM_THEME_IDS.has(String(THEME?.id || CUSTOM_THEME?.id || ""));
+    const settingsOpen = () =>
+      document.documentElement?.getAttribute?.("data-qq-settings") === "true";
 
     const densFor = (key) => MODE_SCALE[key] ?? MODE_SCALE.drizzle;
     const fpsFor = (key) => MODE_FPS[key] ?? 24;
+    const weatherVolume = () => {
+      const configured = typeof SOUND.volume === "number" ? clamp(SOUND.volume, 0, 1) : 0.48;
+      return configured * 0.55;
+    };
+    const rainLevelFor = (key) => ({ drizzle: 0.22, rain: 0.48, storm: 0.36, calm: 0 }[key] ?? 0);
+    const weatherAudioAllowed = () => weatherSoundEnabled && !reduced && !settingsOpen()
+      && document.visibilityState !== "hidden";
+
+    const ensureWeatherAudio = () => {
+      if (weatherAudio && weatherAudio.state !== "closed") return weatherAudio;
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (typeof AudioContextClass !== "function") return null;
+      try { weatherAudio = new AudioContextClass(); } catch { weatherAudio = null; }
+      return weatherAudio;
+    };
+
+    const stopRainAudio = () => {
+      try { rainSource?.stop?.(); } catch {}
+      try { rainSource?.disconnect?.(); } catch {}
+      try { rainFilter?.disconnect?.(); } catch {}
+      try { rainGainNode?.disconnect?.(); } catch {}
+      rainSource = null;
+      rainFilter = null;
+      rainGainNode = null;
+    };
+
+    const syncWeatherAudioButton = () => {
+      const button = document.getElementById(WEATHER_AUDIO_ID);
+      if (!button) return;
+      button.textContent = weatherSoundEnabled ? "🌧 雨声" : "🌧 静音";
+      button.setAttribute("aria-pressed", weatherSoundEnabled ? "true" : "false");
+      button.setAttribute("aria-label", weatherSoundEnabled ? "关闭雨夜音效" : "打开雨夜音效");
+      button.title = weatherSoundEnabled ? "关闭下雨 / 打雷音效" : "打开下雨 / 打雷音效";
+      button.style.background = weatherSoundEnabled ? "rgba(48,118,196,.92)" : "transparent";
+      button.style.color = weatherSoundEnabled ? "#fff" : "#3b3f45";
+      setAttribute(document.documentElement, "data-qq-weather-audio", weatherSoundEnabled ? "on" : "off");
+    };
+
+    const ensureWeatherAudioButton = () => {
+      if (!isActive()) {
+        document.getElementById(WEATHER_AUDIO_ID)?.remove();
+        return;
+      }
+      // Keep the control visible even on settings (user looks for it next to skin switch).
+      const host = typeof ensureToggleButton === "function" ? ensureToggleButton() : document.getElementById(TOGGLE_ID);
+      if (!host) return;
+      let button = document.getElementById(WEATHER_AUDIO_ID);
+      if (!button || button.parentElement !== host) {
+        button?.remove();
+        button = document.createElement("button");
+        button.id = WEATHER_AUDIO_ID;
+        button.type = "button";
+        button.style.cssText = [
+          "height:22px", "padding:0 8px", "border:0", "border-radius:7px", "white-space:nowrap",
+          "font:650 11px/22px -apple-system,BlinkMacSystemFont,\"PingFang SC\",sans-serif",
+          "cursor:pointer", "user-select:none", "transition:background .16s ease,color .16s ease",
+        ].join(";");
+        button.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          weatherSoundEnabled = !weatherSoundEnabled;
+          try {
+            window.localStorage?.setItem("codex-qq-skin-weather-sound-enabled", String(weatherSoundEnabled));
+          } catch {}
+          syncWeatherAudioButton();
+          if (weatherSoundEnabled) startRainAudio();
+          else stopRainAudio();
+        });
+        // Sit beside 原生 / QQ / 自定义 in the top-right skin switcher.
+        host.appendChild(button);
+      }
+      syncWeatherAudioButton();
+    };
+
+    const styleOpenMenus = () => {
+      if (!isActive() || settingsOpen()) return;
+      const roots = [
+        ...document.querySelectorAll('[role="menu"], [role="listbox"], [data-radix-menu-content], [data-radix-dropdown-menu-content]'),
+        ...document.querySelectorAll("[data-radix-popper-content-wrapper] > div"),
+      ];
+      for (const root of roots) {
+        if (!(root instanceof HTMLElement)) continue;
+        const text = String(root.textContent || "");
+        const looksLikeAccount = /(剩余用量|退出登录|显示宠物|Log out|Settings|设置)/i.test(text);
+        const hasItems = root.querySelector?.('[role="menuitem"]');
+        if (!looksLikeAccount && !hasItems) continue;
+        root.style.setProperty("background", "rgb(16 22 36 / 0.98)", "important");
+        root.style.setProperty("background-color", "rgb(16 22 36 / 0.98)", "important");
+        root.style.setProperty("color", "#eaf3ff", "important");
+        root.style.setProperty("border-color", "rgb(78 195 255 / 0.28)", "important");
+        root.style.setProperty("backdrop-filter", "none", "important");
+        root.style.setProperty("-webkit-backdrop-filter", "none", "important");
+        for (const node of root.querySelectorAll("*")) {
+          if (!(node instanceof HTMLElement)) continue;
+          node.style.setProperty("color", "#eaf3ff", "important");
+          if (node.matches?.('[role="menuitem"], button, a')) {
+            node.style.setProperty("background-color", "transparent", "important");
+          }
+        }
+      }
+    };
+
+    const startRainAudio = () => {
+      if (!weatherAudioAllowed()) {
+        stopRainAudio();
+        return;
+      }
+      const level = rainLevelFor(targetMode === "storm" || mode === "storm" ? "storm" : targetMode);
+      if (level <= 0.01) {
+        if (rainGainNode) {
+          try {
+            const now = weatherAudio?.currentTime || 0;
+            rainGainNode.gain.cancelScheduledValues(now);
+            rainGainNode.gain.linearRampToValueAtTime(0.0001, now + 0.35);
+          } catch {}
+        }
+        return;
+      }
+      const context = ensureWeatherAudio();
+      if (!context) return;
+      const applyGain = () => {
+        if (!rainGainNode) return;
+        const now = context.currentTime;
+        const target = Math.max(0.0001, weatherVolume() * level);
+        try {
+          rainGainNode.gain.cancelScheduledValues(now);
+          rainGainNode.gain.linearRampToValueAtTime(target, now + 0.45);
+        } catch {
+          rainGainNode.gain.value = target;
+        }
+      };
+      if (rainSource && rainGainNode) {
+        applyGain();
+        if (context.state === "suspended") context.resume?.().catch?.(() => {});
+        return;
+      }
+      // Looping filtered noise ≈ soft rain bed (no bundled sample needed).
+      const seconds = 2.4;
+      const frames = Math.max(1, Math.floor(context.sampleRate * seconds));
+      const buffer = context.createBuffer(1, frames, context.sampleRate);
+      const data = buffer.getChannelData(0);
+      let state = 0xC0FFEE ^ Math.floor(Math.random() * 1e9);
+      for (let i = 0; i < frames; i += 1) {
+        state = (state * 1664525 + 1013904223) >>> 0;
+        const white = state / 0xffffffff * 2 - 1;
+        // Mild pink-ish tilt so it is less hissy.
+        data[i] = i ? data[i - 1] * 0.97 + white * 0.03 : white * 0.03;
+      }
+      rainSource = context.createBufferSource();
+      rainFilter = context.createBiquadFilter();
+      rainGainNode = context.createGain();
+      rainSource.buffer = buffer;
+      rainSource.loop = true;
+      rainFilter.type = "bandpass";
+      rainFilter.frequency.value = 1800;
+      rainFilter.Q.value = 0.55;
+      rainGainNode.gain.value = 0.0001;
+      rainSource.connect(rainFilter).connect(rainGainNode).connect(context.destination);
+      try { rainSource.start(); } catch {}
+      applyGain();
+      if (context.state === "suspended") context.resume?.().catch?.(() => {});
+    };
+
+    const playThunder = (big = false) => {
+      if (!weatherAudioAllowed()) return;
+      const nowMs = Date.now();
+      if (nowMs - lastThunderAt < (big ? 420 : 900)) return;
+      lastThunderAt = nowMs;
+      const context = ensureWeatherAudio();
+      if (!context) return;
+      const fire = () => {
+        const start = context.currentTime + 0.03;
+        const vol = weatherVolume() * (big ? 1.05 : 0.62);
+        const duration = big ? 2.8 : 1.7;
+        // Brown-ish noise bed → rolling “轰隆隆” rumble, not a sharp crack.
+        const frames = Math.max(1, Math.floor(context.sampleRate * duration));
+        const buffer = context.createBuffer(1, frames, context.sampleRate);
+        const data = buffer.getChannelData(0);
+        let state = 0x51f15e ^ nowMs;
+        let brown = 0;
+        for (let i = 0; i < frames; i += 1) {
+          state = (state * 1664525 + 1013904223) >>> 0;
+          const white = state / 0xffffffff * 2 - 1;
+          brown = (brown + white * 0.02) * 0.98;
+          const phase = i / frames;
+          const envelope = Math.sin(Math.PI * Math.min(1, phase * 1.15))
+            * Math.exp(-phase * (big ? 1.35 : 1.9));
+          // Soft swell then long decay — feels like distant thunder rolling.
+          data[i] = brown * 3.2 * envelope;
+        }
+        const source = context.createBufferSource();
+        const low = context.createBiquadFilter();
+        const mid = context.createBiquadFilter();
+        const gain = context.createGain();
+        source.buffer = buffer;
+        low.type = "lowpass";
+        low.frequency.value = big ? 160 : 190;
+        low.Q.value = 0.7;
+        mid.type = "peaking";
+        mid.frequency.value = 85;
+        mid.Q.value = 0.8;
+        mid.gain.value = 5.5;
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol * 0.9), start + 0.12);
+        gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol * 0.55), start + duration * 0.45);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+        source.connect(low).connect(mid).connect(gain).connect(context.destination);
+        source.start(start);
+        source.stop(start + duration + 0.05);
+        // Extra sub oscillators for the “隆隆” body.
+        for (const [freq, strength, len] of [
+          [big ? 42 : 55, 0.7, duration * 0.9],
+          [big ? 28 : 36, 0.55, duration],
+        ]) {
+          const osc = context.createOscillator();
+          const oscFilter = context.createBiquadFilter();
+          const oscGain = context.createGain();
+          osc.type = "triangle";
+          osc.frequency.setValueAtTime(freq, start);
+          osc.frequency.exponentialRampToValueAtTime(freq * 0.62, start + len);
+          oscFilter.type = "lowpass";
+          oscFilter.frequency.value = 140;
+          oscGain.gain.setValueAtTime(0.0001, start);
+          oscGain.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol * strength * 0.55), start + 0.18);
+          oscGain.gain.exponentialRampToValueAtTime(0.0001, start + len);
+          osc.connect(oscFilter).connect(oscGain).connect(context.destination);
+          osc.start(start);
+          osc.stop(start + len + 0.05);
+        }
+      };
+      if (context.state === "suspended") context.resume().then(fire).catch(() => {});
+      else fire();
+    };
 
     const destroy = () => {
       running = false;
@@ -1181,8 +1432,12 @@
         try { mq.removeEventListener("change", mq._handler); } catch {}
       }
       mq = null;
+      stopRainAudio();
+      try { weatherAudio?.close?.(); } catch {}
+      weatherAudio = null;
       document.getElementById(WEATHER_ID)?.remove();
       document.getElementById(WEATHER_HUD_ID)?.remove();
+      document.getElementById(WEATHER_AUDIO_ID)?.remove();
       host = null;
       canvas = null;
       ctx = null;
@@ -1249,6 +1504,7 @@
       bolts.push({ segs, life: 1, dec: rand(1.5, 2.4), big: !!big });
       if (bolts.length > 5) bolts.shift();
       flash = Math.max(flash, big ? 0.34 : 0.18);
+      playThunder(!!big);
     };
 
     const resize = () => {
@@ -1468,6 +1724,8 @@
       acc = 0;
       if (!reduced) update(dt > frame ? dt : frame);
       paint();
+      audioTick += 1;
+      if (audioTick % 18 === 0) startRainAudio();
     };
 
     const start = () => {
@@ -1476,12 +1734,14 @@
       last = performance.now();
       acc = 0;
       raf = requestAnimationFrame(loop);
+      startRainAudio();
     };
 
     const stop = () => {
       running = false;
       if (raf) cancelAnimationFrame(raf);
       raf = 0;
+      stopRainAudio();
     };
 
     const statusToMode = (status) => {
@@ -1504,7 +1764,9 @@
       if (host) host.dataset.weatherMode = targetMode;
       if (targetMode === "calm" && mode === "calm") {
         paint();
+        startRainAudio();
       } else if (!running && !reduced) start();
+      else startRainAudio();
     };
 
     const setStatus = (status) => {
@@ -1570,11 +1832,33 @@
         });
       }
 
-      setAttribute(document.documentElement, "data-qq-weather", "neon-storm");
+      // Settings uses Codex native chrome: drop the weather attribute so neon
+      // CSS overrides do not fight the official settings tokens.
+      if (settingsOpen()) {
+        document.documentElement?.removeAttribute("data-qq-weather");
+        if (host) host.style.display = "none";
+        // Also clear deep-theme wallpaper vars that paint through settings.
+        try {
+          document.documentElement.style.removeProperty("--dream-skin-art");
+          document.documentElement.style.removeProperty("--dream-deep-right");
+          document.documentElement.style.removeProperty("--dream-deep-sidebar");
+        } catch {}
+      } else {
+        setAttribute(document.documentElement, "data-qq-weather", "neon-storm");
+        if (host) host.style.display = "";
+      }
       resize();
       setStatus(soundMonitor.status || "idle");
       paint();
-      if (!reduced) start();
+      ensureWeatherAudioButton();
+      styleOpenMenus();
+      if (!reduced && !settingsOpen()) start();
+      else {
+        stop();
+        paint();
+      }
+      if (settingsOpen()) stopRainAudio();
+      else startRainAudio();
     };
 
     return {
@@ -1592,6 +1876,26 @@
       },
       destroy,
       get active() { return isActive() && Boolean(host); },
+      syncAudioUi() {
+        if (!isActive()) {
+          document.getElementById(WEATHER_AUDIO_ID)?.remove();
+          return;
+        }
+        ensureWeatherAudioButton();
+        styleOpenMenus();
+        if (settingsOpen()) {
+          document.documentElement?.removeAttribute("data-qq-weather");
+          if (host) host.style.display = "none";
+          stop();
+          stopRainAudio();
+          paint();
+        } else {
+          setAttribute(document.documentElement, "data-qq-weather", "neon-storm");
+          if (host) host.style.display = "";
+          if (!running && !reduced && visible) start();
+          else startRainAudio();
+        }
+      },
     };
   };
 
@@ -2819,15 +3123,71 @@
       candidate.classList.toggle("dream-skin-home-utility", skinMode === "custom");
     }
 
-    if (!shellMain || !document.body) return;
+    // Detect settings before any early-return so neon-storm can fall back to
+    // native Codex chrome even when the settings shell has no main.main-surface.
+    const settingsRoute = (() => {
+      const byPlaceholder = [...document.querySelectorAll("input[placeholder], input[type='search']")].some((input) => {
+        const placeholder = input.getAttribute("placeholder") || "";
+        const aria = input.getAttribute("aria-label") || "";
+        if (!/(settings|设置|設定|搜索)/i.test(`${placeholder} ${aria}`)) return false;
+        // Settings search is typically in the left rail.
+        const box = typeof input.getBoundingClientRect === "function" ? input.getBoundingClientRect() : null;
+        return !box || (box.width > 40 && box.height > 10 && box.left < 420);
+      });
+      if (byPlaceholder && document.body?.innerText && /(个人资料|Profile).{0,40}(外观|Appearance)/i.test(document.body.innerText.slice(0, 2500))) {
+        return true;
+      }
+      if (/settings/i.test(`${window.location?.pathname || ""}${window.location?.hash || ""}${window.location?.search || ""}`)) {
+        return true;
+      }
+      const nav = document.querySelector("aside.app-shell-left-panel") || document.querySelector("aside");
+      const navText = String(nav?.innerText || "").replace(/\s+/g, " ");
+      if (/(常规|General).{0,120}(个人资料|Profile).{0,120}(外观|Appearance)/i.test(navText)) return true;
+      if (/(常规|General).{0,80}(外观|Appearance).{0,160}(语音|Voice|声音|通知)/i.test(navText)) return true;
+      // Visible settings section titles in the main pane.
+      const headings = [...document.querySelectorAll("h1,h2,h3")].map((el) => (el.textContent || "").trim());
+      if (headings.includes("常规") || headings.includes("General")) {
+        if (/(权限|Permissions|默认文件打开目标)/i.test(document.body?.innerText || "")) return true;
+      }
+      return false;
+    })();
+    setAttribute(root, "data-qq-settings", settingsRoute ? "true" : "");
+    if (settingsRoute) {
+      // Force Codex-native settings chrome: drop neon weather + deep wallpaper attrs.
+      root.removeAttribute("data-qq-weather");
+      if (root.getAttribute("data-dream-deep-theme") === "true") {
+        root.setAttribute("data-dream-deep-theme-paused", "true");
+        root.removeAttribute("data-dream-deep-theme");
+      }
+      try {
+        root.style.removeProperty("--dream-skin-art");
+        root.style.removeProperty("--dream-deep-right");
+        root.style.removeProperty("--dream-deep-sidebar");
+      } catch {}
+    } else if (root.getAttribute("data-dream-deep-theme-paused") === "true") {
+      root.setAttribute("data-dream-deep-theme", "true");
+      root.removeAttribute("data-dream-deep-theme-paused");
+    }
+
+    if (!shellMain || !document.body) {
+      if (skinMode === "custom") {
+        // Toggle first — recreating it would wipe the rain-audio sibling button.
+        ensureToggleButton();
+        weatherMonitor.ensure();
+        weatherMonitor.syncAudioUi?.();
+      }
+      return;
+    }
     shellMain.classList.toggle("qq-skin-home-shell", Boolean(home) && skinMode === "qq");
     shellMain.classList.toggle("dream-skin-home-shell", Boolean(home) && skinMode === "custom");
+
     if (skinMode === "custom") {
       removeQQDecorations();
       setAttribute(root, "data-dream-three-pane", "false");
       setAttribute(root, "data-dream-summary-state", "unavailable");
-      weatherMonitor.ensure();
       ensureToggleButton();
+      weatherMonitor.ensure();
+      weatherMonitor.syncAudioUi?.();
       return;
     }
     weatherMonitor.destroy();
@@ -2861,14 +3221,6 @@
       ? clamp(Math.round(LAYOUT.rightWidth), 272, 360) : 300;
     const shouldAutoOpenSummary = LAYOUT.rightPanel !== "remember";
     const wideEnough = window.innerWidth >= layoutMinWidth;
-    const settingsRoute = [...document.querySelectorAll('input[placeholder]')].some((input) => {
-      let placeholder = input.getAttribute("placeholder") || "";
-      if (/(设置|設定)/i.test(placeholder)) placeholder = "settings";
-      if (!/(settings|设置|設定)/i.test(placeholder)) return false;
-      if (typeof input.getBoundingClientRect !== "function") return false;
-      const box = input.getBoundingClientRect();
-      return box.width > 120 && box.height > 12;
-    });
     const taskRoute = !home && !settingsRoute && Boolean(shellMain);
     setAttribute(root, "data-dream-task-route", taskRoute ? "true" : "false");
     const visibleThreadFooters = [...document.querySelectorAll(
@@ -3001,9 +3353,14 @@
     metrics.ensureCalls += 1;
     const shell = rootPass ? applyRootState(root) : null;
     soundMonitor.scan();
-    weatherMonitor.ensure();
-    if (weatherMonitor.active) weatherMonitor.setStatus(soundMonitor.status);
+    // Route first so data-qq-settings / native settings chrome is decided
+    // before the weather layer mounts or paints neon tokens.
     if (route) syncRouteState(shell, { layout });
+    else {
+      ensureToggleButton();
+      weatherMonitor.ensure();
+    }
+    if (weatherMonitor.active) weatherMonitor.setStatus(soundMonitor.status);
   };
 
   const removeSkinVisuals = () => {
@@ -3261,6 +3618,7 @@
     removeSkinVisuals();
     document.getElementById(TOGGLE_ID)?.remove();
     document.getElementById(LIBRARY_MENU_ID)?.remove();
+    document.getElementById(WEATHER_AUDIO_ID)?.remove();
     state?.observer?.disconnect();
     state?.rootObserver?.disconnect();
     state?.resizeObserver?.disconnect();
@@ -3333,6 +3691,8 @@
   });
   const resizeHandler = () => scheduleEnsure({ route: true, layout: true });
   const routeInteractionHandler = () => {
+    // Profile menus open on click — restyle quickly before the slower route settle.
+    try { weatherMonitor.syncAudioUi?.(); } catch {}
     if (routeSettleTimer) clearTimeout(routeSettleTimer);
     routeSettleTimer = setTimeout(() => {
       routeSettleTimer = null;

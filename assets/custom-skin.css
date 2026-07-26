@@ -1374,6 +1374,15 @@ html.codex-dream-skin[data-qq-weather="neon-storm"] body {
   --color-token-main-surface-secondary: #141a26 !important;
   --color-token-sidebar-surface-primary: #0e1420 !important;
   --color-token-sidebar-surface-secondary: #141a26 !important;
+  /* Menus / settings cards still used light bg tokens → white-on-white. */
+  --color-token-bg-primary: #141a26 !important;
+  --color-token-bg-secondary: rgb(20 26 38 / .92) !important;
+  --color-token-bg-tertiary: rgb(27 36 52 / .88) !important;
+  --color-token-dropdown-background: #1b2434 !important;
+  --color-token-menu-background: rgb(16 22 36 / .96) !important;
+  --color-token-border-default: rgb(78 195 255 / .22) !important;
+  --color-token-border-heavy: rgb(78 195 255 / .34) !important;
+  --color-token-border-light: rgb(78 195 255 / .14) !important;
   background: #000000 !important;
   background-image: none !important;
   color: #eaf3ff !important;
@@ -1585,9 +1594,15 @@ html.codex-dream-skin[data-qq-weather="neon-storm"] #codex-qq-skin-weather[data-
 }
 
 html.codex-dream-skin[data-qq-weather="neon-storm"] #root,
-html.codex-dream-skin[data-qq-weather="neon-storm"] body > div:not(#codex-qq-skin-weather):not(#codex-qq-skin-toggle):not(#codex-qq-skin-library-menu) {
+html.codex-dream-skin[data-qq-weather="neon-storm"] body > div:not(#codex-qq-skin-weather):not(#codex-qq-skin-toggle):not(#codex-qq-skin-library-menu):not(#codex-qq-skin-weather-audio) {
   position: relative;
   z-index: 1;
+}
+
+html.codex-dream-skin[data-qq-weather="neon-storm"] #codex-qq-skin-weather-audio {
+  -webkit-app-region: no-drag !important;
+  app-region: no-drag !important;
+  pointer-events: auto !important;
 }
 
 /* Hide legacy status HUD if an older inject left it behind. */
@@ -1648,6 +1663,135 @@ html.codex-dream-skin[data-qq-weather="neon-storm"] main.main-surface
   background: rgb(16 22 36 / .94) !important;
   color: #eaf3ff !important;
   border-color: rgb(78 195 255 / .24) !important;
+}
+
+/* Account / profile menu + floating popovers — force dark readable chrome. */
+html.codex-dream-skin[data-qq-weather="neon-storm"] [role="menu"],
+html.codex-dream-skin[data-qq-weather="neon-storm"] [role="listbox"],
+html.codex-dream-skin[data-qq-weather="neon-storm"] [data-radix-menu-content],
+html.codex-dream-skin[data-qq-weather="neon-storm"] [data-radix-dropdown-menu-content],
+html.codex-dream-skin[data-qq-weather="neon-storm"] [data-radix-popper-content-wrapper],
+html.codex-dream-skin[data-qq-weather="neon-storm"] [data-radix-popper-content-wrapper] > div,
+html.codex-dream-skin[data-qq-weather="neon-storm"] [data-radix-popper-content-wrapper] [class*="bg-"],
+html.codex-dream-skin[data-qq-weather="neon-storm"] [data-radix-popper-content-wrapper] [class*="rounded"],
+html.codex-dream-skin[data-qq-weather="neon-storm"] [class*="bg-token-menu-background"],
+html.codex-dream-skin[data-qq-weather="neon-storm"] [class*="bg-token-dropdown-background"],
+html.codex-dream-skin[data-qq-weather="neon-storm"] [class*="PopoverContent"],
+html.codex-dream-skin[data-qq-weather="neon-storm"] [class*="DropdownMenuContent"],
+html.codex-dream-skin[data-qq-weather="neon-storm"] [class*="ContextMenuContent"] {
+  background: rgb(16 22 36 / .98) !important;
+  background-color: rgb(16 22 36 / .98) !important;
+  background-image: none !important;
+  color: #eaf3ff !important;
+  border: 1px solid rgb(78 195 255 / .28) !important;
+  box-shadow: 0 16px 40px rgb(0 0 0 / .55) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html.codex-dream-skin[data-qq-weather="neon-storm"] [role="menu"] *,
+html.codex-dream-skin[data-qq-weather="neon-storm"] [role="menuitem"],
+html.codex-dream-skin[data-qq-weather="neon-storm"] [role="menuitem"] *,
+html.codex-dream-skin[data-qq-weather="neon-storm"] [data-radix-menu-content] *,
+html.codex-dream-skin[data-qq-weather="neon-storm"] [data-radix-dropdown-menu-content] *,
+html.codex-dream-skin[data-qq-weather="neon-storm"] [class*="bg-token-menu-background"] *,
+html.codex-dream-skin[data-qq-weather="neon-storm"] [class*="bg-token-dropdown-background"] *,
+html.codex-dream-skin[data-qq-weather="neon-storm"] [class*="PopoverContent"] *,
+html.codex-dream-skin[data-qq-weather="neon-storm"] [class*="DropdownMenuContent"] *,
+html.codex-dream-skin[data-qq-weather="neon-storm"] div[data-state="open"][class*="rounded"] * {
+  color: #eaf3ff !important;
+  fill: #eaf3ff !important;
+  border-color: rgb(78 195 255 / .18) !important;
+}
+
+html.codex-dream-skin[data-qq-weather="neon-storm"] [role="menuitem"]:hover,
+html.codex-dream-skin[data-qq-weather="neon-storm"] [role="menuitem"]:focus,
+html.codex-dream-skin[data-qq-weather="neon-storm"] [data-highlighted],
+html.codex-dream-skin[data-qq-weather="neon-storm"] [role="menuitem"][data-highlighted] {
+  background: rgb(48 118 196 / .32) !important;
+  color: #ffffff !important;
+}
+
+/* Settings: Codex-native chrome. Keep rain-audio button next to skin switch. */
+html.codex-dream-skin[data-qq-settings="true"] #codex-qq-skin-weather {
+  display: none !important;
+}
+
+html.codex-dream-skin[data-qq-settings="true"],
+html.codex-dream-skin[data-qq-settings="true"] body {
+  color-scheme: light !important;
+  background: #f6f6f6 !important;
+  background-image: none !important;
+  color: #0d0d0d !important;
+  --color-token-text-primary: #0d0d0d !important;
+  --color-token-text-secondary: #5d5d5d !important;
+  --color-token-text-tertiary: #8f8f8f !important;
+  --color-token-foreground: #0d0d0d !important;
+  --color-token-bg-primary: #ffffff !important;
+  --color-token-bg-secondary: #f6f6f6 !important;
+  --color-token-main-surface-primary: #ffffff !important;
+  --color-token-main-surface-secondary: #f6f6f6 !important;
+  --color-token-sidebar-surface-primary: #f6f6f6 !important;
+  --color-token-sidebar-surface-secondary: #ececec !important;
+  --color-token-menu-background: #ffffff !important;
+  --color-token-dropdown-background: #ffffff !important;
+  --dream-skin-art: none !important;
+  --dream-deep-right: none !important;
+  --dream-deep-sidebar: none !important;
+}
+
+html.codex-dream-skin[data-qq-settings="true"] body::before,
+html.codex-dream-skin[data-qq-settings="true"] body::after,
+html.codex-dream-skin[data-qq-settings="true"] main.main-surface::before,
+html.codex-dream-skin[data-qq-settings="true"] main.main-surface::after,
+html.codex-dream-skin[data-qq-settings="true"] aside.app-shell-left-panel::before,
+html.codex-dream-skin[data-qq-settings="true"] aside.app-shell-left-panel::after {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+  background-image: none !important;
+  opacity: 0 !important;
+}
+
+html.codex-dream-skin[data-qq-settings="true"] main.main-surface,
+html.codex-dream-skin[data-qq-settings="true"] main.main-surface *,
+html.codex-dream-skin[data-qq-settings="true"] aside.app-shell-left-panel,
+html.codex-dream-skin[data-qq-settings="true"] aside.app-shell-left-panel * {
+  text-shadow: none !important;
+  color: inherit;
+}
+
+html.codex-dream-skin[data-qq-settings="true"] aside.app-shell-left-panel,
+html.codex-dream-skin[data-qq-settings="true"] aside.app-shell-left-panel button,
+html.codex-dream-skin[data-qq-settings="true"] aside.app-shell-left-panel a,
+html.codex-dream-skin[data-qq-settings="true"] aside.app-shell-left-panel [class*="text-token"] {
+  color: #0d0d0d !important;
+  background-image: none !important;
+}
+
+html.codex-dream-skin[data-qq-settings="true"] main.main-surface,
+html.codex-dream-skin[data-qq-settings="true"] main.main-surface [class*="bg-token"],
+html.codex-dream-skin[data-qq-settings="true"] main.main-surface [class*="bg-white"],
+html.codex-dream-skin[data-qq-settings="true"] main.main-surface [class*="rounded"],
+html.codex-dream-skin[data-qq-settings="true"] aside.app-shell-left-panel {
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html.codex-dream-skin[data-qq-settings="true"] main.main-surface [class*="text-token"],
+html.codex-dream-skin[data-qq-settings="true"] main.main-surface label,
+html.codex-dream-skin[data-qq-settings="true"] main.main-surface span,
+html.codex-dream-skin[data-qq-settings="true"] main.main-surface p,
+html.codex-dream-skin[data-qq-settings="true"] main.main-surface h1,
+html.codex-dream-skin[data-qq-settings="true"] main.main-surface h2,
+html.codex-dream-skin[data-qq-settings="true"] main.main-surface h3 {
+  color: #0d0d0d !important;
+}
+
+html.codex-dream-skin[data-qq-settings="true"] main.main-surface [class*="text-token-text-secondary"],
+html.codex-dream-skin[data-qq-settings="true"] main.main-surface [class*="text-token-text-tertiary"] {
+  color: #5d5d5d !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

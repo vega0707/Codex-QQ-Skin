@@ -65,6 +65,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTableViewDataSource,
     private var statusLabel: NSTextField!
     private var updateProgress: NSProgressIndicator!
     private var updateReleaseButton: NSButton!
+    private var updateCancelButton: NSButton!
+    private var updateActions: NSStackView!
     private var primaryButton: NSButton!
     private var skillButton: NSButton!
     private var skillStatusLabel: NSTextField!
@@ -79,7 +81,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTableViewDataSource,
     private var themes: [ThemeLibraryItem] = []
     private var updateReleaseURL: URL?
     private var updateSession: URLSession?
+    private var updateDownloadTask: URLSessionDownloadTask?
     private var updateDownloadDelegate: UpdateDownloadDelegate?
+    private var updateCancelled = false
 
     private var home: URL { FileManager.default.homeDirectoryForCurrentUser }
     private var installedRoot: URL { home.appendingPathComponent(".codex/codex-qq-skin-studio") }
@@ -157,16 +161,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTableViewDataSource,
         beginUpdateDownload(release: release, asset: archive)
         let delegate = UpdateDownloadDelegate()
         updateDownloadDelegate = delegate
+        updateCancelled = false
         delegate.progressHandler = { [weak self] received, expected in
             DispatchQueue.main.async {
-                self?.showUpdateProgress(received: received, expected: expected > 0 ? expected : archive.size, tag: release.tag_name)
+                guard let self, !self.updateCancelled else { return }
+                self.showUpdateProgress(received: received, expected: expected > 0 ? expected : archive.size, tag: release.tag_name)
             }
         }
         delegate.completionHandler = { [weak self] temporary, error in
             guard let self else { return }
             self.updateSession?.finishTasksAndInvalidate()
             self.updateSession = nil
+            self.updateDownloadTask = nil
             self.updateDownloadDelegate = nil
+            if self.updateCancelled || (error as? URLError)?.code == .cancelled {
+                DispatchQueue.main.async {
+                    self.endUpdateDownload(message: "已取消下载")
+                }
+                return
+            }
             guard let temporary, error == nil else {
                 DispatchQueue.main.async {
                     self.endUpdateDownload(message: "更新下载失败")
@@ -205,7 +218,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTableViewDataSource,
         }
         let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
         updateSession = session
-        session.downloadTask(with: archive.browser_download_url).resume()
+        let task = session.downloadTask(with: archive.browser_download_url)
+        updateDownloadTask = task
+        task.resume()
     }
 
     private func beginUpdateDownload(release: GitHubRelease, asset: GitHubRelease.Asset) {
@@ -215,7 +230,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTableViewDataSource,
         updateProgress.doubleValue = 0
         updateProgress.isIndeterminate = false
         updateProgress.isHidden = false
+        updateActions.isHidden = false
         updateReleaseButton.isHidden = false
+        updateCancelButton.isHidden = false
+        updateCancelButton.isEnabled = true
         setBusy(true, message: "正在下载 \(release.tag_name)：0 B / \(formatBytes(asset.size)) (0%)")
     }
 
@@ -230,8 +248,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTableViewDataSource,
 
     private func endUpdateDownload(message: String) {
         updateProgress.isHidden = true
+        updateActions.isHidden = true
         updateReleaseButton.isHidden = true
+        updateCancelButton.isHidden = true
         updateReleaseURL = nil
+        updateDownloadTask = nil
+        updateCancelled = false
         setBusy(false, message: message)
     }
 
@@ -246,6 +268,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTableViewDataSource,
 
     @objc private func openUpdateRelease() {
         if let updateReleaseURL { NSWorkspace.shared.open(updateReleaseURL) }
+    }
+
+    @objc private func cancelUpdateDownload() {
+        guard !updateCancelled, updateSession != nil || updateDownloadTask != nil else { return }
+        updateCancelled = true
+        updateCancelButton.isEnabled = false
+        statusLabel.stringValue = "正在取消下载…"
+        updateDownloadTask?.cancel()
+        updateSession?.invalidateAndCancel()
+        // If the session never reports cancellation, close the busy UI anyway.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+            guard let self, self.updateCancelled, !self.updateCancelButton.isHidden else { return }
+            self.updateSession = nil
+            self.updateDownloadTask = nil
+            self.updateDownloadDelegate = nil
+            self.endUpdateDownload(message: "已取消下载")
+        }
     }
 
     private func showUpdateFailure(_ message: String, releaseURL: URL) {
@@ -352,11 +391,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTableViewDataSource,
         updateReleaseButton.contentTintColor = .linkColor
         updateReleaseButton.isHidden = true
 
+        updateCancelButton = NSButton(title: "取消下载", target: self, action: #selector(cancelUpdateDownload))
+        updateCancelButton.bezelStyle = .rounded
+        updateCancelButton.controlSize = .small
+        updateCancelButton.isHidden = true
+
+        updateActions = NSStackView(views: [updateCancelButton, updateReleaseButton])
+        updateActions.orientation = .horizontal
+        updateActions.alignment = .centerY
+        updateActions.spacing = 16
+        updateActions.isHidden = true
+
         buildLaunchPane()
         buildLibraryPane()
         libraryPane.isHidden = true
 
-        [tabControl, launchPane, libraryPane, statusLabel, updateProgress, updateReleaseButton].forEach(root.addArrangedSubview)
+        [tabControl, launchPane, libraryPane, statusLabel, updateProgress, updateActions].forEach(root.addArrangedSubview)
         window.contentView?.addSubview(root)
         NSLayoutConstraint.activate([
             root.leadingAnchor.constraint(equalTo: window.contentView!.leadingAnchor),
@@ -953,6 +1003,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTableViewDataSource,
         customizeButton.isEnabled = !value && installed
         restoreButton.isEnabled = !value && installed
         tabControl.isEnabled = !value
+        // Keep cancel available while an update download is in progress.
+        if !updateCancelButton.isHidden { updateCancelButton.isEnabled = true }
         tableView.reloadData()
     }
 
