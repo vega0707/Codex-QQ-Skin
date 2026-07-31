@@ -1,6 +1,6 @@
 
 
-# Codex 皮肤生成器
+# Codex 皮肤生成器(内置沉浸式女友)
 
 一套面向 Codex/ChatGPT 桌面端皮肤生成器（内置QQ皮肤）。  
 1、支持 Mac & Windows 系统：提供 macOS App 与原生 C# Windows 安装器。  
