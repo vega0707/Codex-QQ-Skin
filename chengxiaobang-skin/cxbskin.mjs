@@ -142,10 +142,8 @@ function buildPayload() {
     const applyTheme = (t) => {
       theme = t;
       style.textContent = THEMES[t].css;
-      video.src = THEMES[t].videos.idle;
-      video.play().catch(() => {});
+      fadeVideo(THEMES[t].videos.idle);
     };
-    applyTheme(detectTheme());
     new MutationObserver(() => {
       const t = detectTheme();
       if (t !== theme) { applyTheme(t); setState("idle"); }
@@ -158,12 +156,20 @@ function buildPayload() {
     let lastMsgLen = 0;
     let wasRunning = false;
     let doneUntil = 0;
+    const fadeVideo = (src, cb) => {
+      // 淡出 → 换源 → 等加载好 → 淡入（避免切换黑屏闪烁）
+      video.style.opacity = "0";
+      video.src = src;
+      video.play().catch(() => {});
+      let applied = false;
+      const fadeIn = () => { if (!applied) { applied = true; video.style.opacity = "1"; cb && cb(); } };
+      video.addEventListener("loadeddata", fadeIn, { once: true });
+      setTimeout(fadeIn, 700); // 兜底：加载慢时也淡入
+    };
     const setState = (s) => {
       if (s === cur) return;
       cur = s;
-      video.src = THEMES[theme].videos[s] || THEMES[theme].videos.idle;
-      video.muted = true;
-      video.play().catch(() => {});
+      fadeVideo(THEMES[theme].videos[s] || THEMES[theme].videos.idle);
     };
     const detect = () => {
       try {
@@ -200,6 +206,9 @@ function buildPayload() {
     };
     // 激活皮肤类
     document.documentElement.classList.add("cxb-gf-skin");
+
+    // 初始应用主题（须在 fadeVideo 定义后调用）
+    applyTheme(detectTheme());
 
     // 启动状态机（先清旧定时器，防止重复注入导致多路并发念多遍）
     if (window.__CXB_GF_TIMER__) clearInterval(window.__CXB_GF_TIMER__);

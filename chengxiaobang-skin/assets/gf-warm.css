@@ -25,6 +25,7 @@ html.cxb-gf-skin body > #root {
   object-fit: cover;
   object-position: 74% 30%;
   opacity: 1;
+  transition: opacity 0.25s ease;
   -webkit-mask-image: radial-gradient(
     ellipse 90% 70% at 70% 55%,
     #000 0%, #000 50%,
