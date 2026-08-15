@@ -113,7 +113,7 @@ function buildPayload() {
     style.textContent = css;
     (document.head || document.documentElement).appendChild(style);
 
-    // 动态女友视频层（右下角，随状态切换）
+    // 动态女友视频层（右侧大背景，沉底，随状态切换）
     const video = document.createElement("video");
     video.id = "cxb-gf-live";
     video.muted = true;
@@ -121,17 +121,43 @@ function buildPayload() {
     video.autoplay = true;
     video.playsInline = true;
     video.setAttribute("playsinline", "");
-    Object.assign(video.style, {
-      position: "fixed", right: "16px", bottom: "64px",
-      width: "400px", height: "auto",
-      zIndex: "2147483647", pointerEvents: "none",
-      borderRadius: "16px",
-      filter: "drop-shadow(0 0 24px rgba(255,0,200,0.35))",
-      opacity: "0.96",
-    });
     video.src = VIDEOS.idle;
     document.body.appendChild(video);
     video.play().catch(() => {});
+
+    // 女友上方渐变遮罩（保证左侧 UI 可读）
+    const veil = document.createElement("div");
+    veil.id = "cxb-gf-veil";
+    document.body.appendChild(veil);
+
+    // ---- 声音：状态切换时女友语音（TTS），首次交互后启用 ----
+    let voiceOn = false;
+    const enableVoice = () => { voiceOn = true; };
+    window.addEventListener("pointerdown", enableVoice, { once: true });
+    window.addEventListener("keydown", enableVoice, { once: true });
+    const VOICE = {
+      done: "搞定啦～",
+      approval: "需要你确认一下哦",
+      thinking: "嗯…让我想想",
+      acting: "正在帮你处理～",
+    };
+    let lastVoiceAt = 0;
+    const say = (s) => {
+      if (!voiceOn || !window.speechSynthesis) return;
+      const line = VOICE[s];
+      if (!line) return;
+      const now = Date.now();
+      if (now - lastVoiceAt < 4000) return; // 防刷屏
+      lastVoiceAt = now;
+      try {
+        const u = new SpeechSynthesisUtterance(line);
+        u.lang = "zh-CN";
+        u.rate = 1.08;
+        u.pitch = 1.35;
+        u.volume = 0.9;
+        window.speechSynthesis.speak(u);
+      } catch {}
+    };
 
     // ---- 状态机：检测程小帮任务状态，切换视频 ----
     let cur = "idle";
@@ -141,6 +167,7 @@ function buildPayload() {
       cur = s;
       video.src = VIDEOS[s] || VIDEOS.idle;
       video.play().catch(() => {});
+      say(s);
     };
     const detect = () => {
       try {
@@ -177,6 +204,7 @@ function buildRemoveScript() {
     document.getElementById("cxb-gf-style-host")?.remove();
     document.getElementById("cxb-gf-background")?.remove();
     document.getElementById("cxb-gf-live")?.remove();
+    document.getElementById("cxb-gf-veil")?.remove();
     document.documentElement.classList.remove("cxb-gf-skin");
     document.documentElement.style.removeProperty("--gf-portrait");
     delete window.__CXB_GF_SKIN__;
