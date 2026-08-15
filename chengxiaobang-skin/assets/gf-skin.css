@@ -52,3 +52,21 @@ html.cxb-gf-skin body > #root {
     rgba(20, 17, 13, 0.12) 70%,
     rgba(20, 17, 13, 0) 100%);
 }
+
+/* 面板背景半透明（让女友透出）——只动 background，不改字体/按钮颜色 */
+html.cxb-gf-skin .bg-background,
+html.cxb-gf-skin .bg-card,
+html.cxb-gf-skin .bg-muted,
+html.cxb-gf-skin .bg-sidebar,
+html.cxb-gf-skin .bg-canvas-soft,
+html.cxb-gf-skin .bg-canvas-soft-2,
+html.cxb-gf-skin .bg-popover {
+  background-color: rgba(20, 17, 13, 0.55) !important;
+}
+
+html.cxb-gf-skin .app-sidebar {
+  background: rgba(20, 17, 13, 0.72) !important;
+  background-image: none !important;
+}
+
+html.cxb-gf-skin .chat-layout-scope { background: transparent !important; }
