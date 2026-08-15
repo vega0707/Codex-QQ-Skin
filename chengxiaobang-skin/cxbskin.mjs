@@ -151,34 +151,16 @@ function buildPayload() {
       if (t !== theme) { applyTheme(t); setState("idle"); }
     }).observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 
-    // ---- 声音：状态切换时女友语音（TTS），首次交互后启用 ----
+    // ---- 声音：官方带声音素材（非 TTS）。speaking 状态放官方配音视频，其余静音 ----
+    const AUDIO_SPEAKING = "https://codex.liuwa.xyz/objective-live-speaking-with-audio.mp4";
     let voiceOn = false;
-    const enableVoice = () => { voiceOn = true; };
+    const enableVoice = () => {
+      voiceOn = true;
+      const v = document.getElementById("cxb-gf-live");
+      if (v && cur === "speaking") v.muted = false; // 交互时若正在说话，立即开声
+    };
     window.addEventListener("pointerdown", enableVoice, { once: true });
     window.addEventListener("keydown", enableVoice, { once: true });
-    const VOICE = {
-      done: "搞定啦～",
-      approval: "需要你确认一下哦",
-      thinking: "嗯…让我想想",
-      acting: "正在帮你处理～",
-    };
-    let lastVoiceAt = 0;
-    const say = (s) => {
-      if (!voiceOn || !window.speechSynthesis) return;
-      const line = VOICE[s];
-      if (!line) return;
-      const now = Date.now();
-      if (now - lastVoiceAt < 4000) return;
-      lastVoiceAt = now;
-      try {
-        const u = new SpeechSynthesisUtterance(line);
-        u.lang = "zh-CN";
-        u.rate = 1.08;
-        u.pitch = 1.35;
-        u.volume = 0.9;
-        window.speechSynthesis.speak(u);
-      } catch {}
-    };
 
     // ---- 状态机：检测程小帮任务状态，切换视频 ----
     let cur = "idle";
@@ -186,9 +168,15 @@ function buildPayload() {
     const setState = (s) => {
       if (s === cur) return;
       cur = s;
-      video.src = THEMES[theme].videos[s] || THEMES[theme].videos.idle;
+      if (s === "speaking") {
+        // speaking：官方带声音视频（画面+配音）；声音需首次交互解锁
+        video.src = AUDIO_SPEAKING;
+        video.muted = !voiceOn;
+      } else {
+        video.src = THEMES[theme].videos[s] || THEMES[theme].videos.idle;
+        video.muted = true;
+      }
       video.play().catch(() => {});
-      say(s);
     };
     const detect = () => {
       try {
