@@ -209,10 +209,12 @@ function buildPayload() {
         return setState("idle");
       } catch { /* ignore */ }
     };
-    setInterval(detect, 800);
-
     // 激活皮肤类
     document.documentElement.classList.add("cxb-gf-skin");
+
+    // 启动状态机（先清旧定时器，防止重复注入导致多路并发念多遍）
+    if (window.__CXB_GF_TIMER__) clearInterval(window.__CXB_GF_TIMER__);
+    window.__CXB_GF_TIMER__ = setInterval(detect, 800);
 
     window[KEY] = true;
     return "injected:" + theme;
@@ -222,6 +224,7 @@ function buildPayload() {
 
 function buildRemoveScript() {
   return `(() => {
+    if (window.__CXB_GF_TIMER__) { clearInterval(window.__CXB_GF_TIMER__); window.__CXB_GF_TIMER__ = null; }
     document.getElementById("cxb-gf-style-host")?.remove();
     document.getElementById("cxb-gf-background")?.remove();
     document.getElementById("cxb-gf-live")?.remove();
