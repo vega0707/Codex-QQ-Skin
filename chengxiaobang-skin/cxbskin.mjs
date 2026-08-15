@@ -186,7 +186,7 @@ function buildPayload() {
         const text = document.body ? document.body.innerText : "";
         const ae = document.activeElement;
         const typing = ae && (ae.tagName === "TEXTAREA" || ae.tagName === "INPUT") && (ae.value || "").length > 0;
-        const msg = document.querySelector(".latest-main-message");
+        const msg = document.querySelector(".chat-scroll-area") || document.querySelector(".latest-main-message");
         const msgLen = msg ? msg.innerText.length : 0;
         const streaming = msgLen > lastMsgLen + 2;
         lastMsgLen = msgLen;
