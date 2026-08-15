@@ -1,21 +1,10 @@
-/* ===== 程小帮 · 暖白女友皮肤（浅色沉浸，基于 BuddyLiveGF warm-white） ===== */
+/* ===== 程小帮 · 暖白女友皮肤（只改背景+女友，不动字体/按钮） ===== */
 
-/* 暖白主题变量 */
-html.cxb-gf-skin {
-  --gf-bg: #f7f3ee;
-  --gf-panel: rgba(255, 255, 255, 0.55);
-  --gf-panel-strong: rgba(255, 255, 255, 0.82);
-  --gf-line: rgba(139, 207, 216, 0.55);
-  --gf-text: #4a3f34;
-  --gf-muted: #9a8b7a;
-  --gf-accent: #8bcfd8;
-}
-
-/* 全屏暖白底 */
+/* 暖白底 */
 html.cxb-gf-skin,
 html.cxb-gf-skin body {
-  background: var(--gf-bg) !important;
-  color-scheme: light !important;
+  background: #f7f3ee !important;
+  color-scheme: light;
 }
 
 html.cxb-gf-skin body > #root {
@@ -24,7 +13,7 @@ html.cxb-gf-skin body > #root {
   background: transparent !important;
 }
 
-/* ---- 动态女友：右侧大背景（沉底，不挡交互） ---- */
+/* ---- 动态女友：沉浸式撑满右侧，官方 mask 羽化 ---- */
 #cxb-gf-live {
   position: fixed;
   right: 0;
@@ -50,7 +39,7 @@ html.cxb-gf-skin body > #root {
     transparent 100%);
 }
 
-/* 女友上方浅色渐变遮罩，保证左侧 UI 可读 */
+/* 女友上方左侧渐变遮罩，保证左侧 UI 可读（不改文字色） */
 #cxb-gf-veil {
   position: fixed;
   inset: 0;
@@ -58,60 +47,7 @@ html.cxb-gf-skin body > #root {
   pointer-events: none;
   background: linear-gradient(90deg,
     rgba(247, 243, 238, 0.95) 0%,
-    rgba(247, 243, 238, 0.78) 42%,
-    rgba(247, 243, 238, 0.30) 72%,
-    rgba(247, 243, 238, 0.05) 100%);
+    rgba(247, 243, 238, 0.70) 40%,
+    rgba(247, 243, 238, 0.15) 70%,
+    rgba(247, 243, 238, 0) 100%);
 }
-
-/* ---- 面板半透明白，让女友透出来 ---- */
-html.cxb-gf-skin .bg-background,
-html.cxb-gf-skin .bg-card,
-html.cxb-gf-skin .bg-muted,
-html.cxb-gf-skin .bg-sidebar,
-html.cxb-gf-skin .bg-canvas-soft,
-html.cxb-gf-skin .bg-canvas-soft-2,
-html.cxb-gf-skin .bg-popover {
-  background-color: var(--gf-panel) !important;
-}
-
-/* 侧边栏 */
-html.cxb-gf-skin .app-sidebar {
-  z-index: 2147482501 !important;
-  color: rgba(74, 63, 52, 0.92) !important;
-  border-right-color: rgba(74, 63, 52, 0.08) !important;
-  background: rgba(247, 243, 238, 0.78) !important;
-  background-image: none !important;
-  box-shadow: none !important;
-}
-
-html.cxb-gf-skin .app-sidebar button,
-html.cxb-gf-skin .app-sidebar a,
-html.cxb-gf-skin .app-sidebar [role="button"] {
-  color: rgba(74, 63, 52, 0.82) !important;
-}
-
-/* 聊天区透明 */
-html.cxb-gf-skin .chat-layout-scope { background: transparent !important; }
-
-html.cxb-gf-skin .latest-main-message {
-  background: var(--gf-panel) !important;
-  border-color: var(--gf-line) !important;
-}
-
-/* 输入区半透明白 */
-html.cxb-gf-skin .side-chat-composer {
-  background: var(--gf-panel-strong) !important;
-  border-color: var(--gf-line) !important;
-  box-shadow: 0 0 0 1px rgba(139, 207, 216, 0.35), 0 0 24px rgba(139, 207, 216, 0.15) !important;
-}
-
-/* 全局文字颜色 */
-html.cxb-gf-skin body { color: var(--gf-text) !important; }
-html.cxb-gf-skin .muted,
-html.cxb-gf-skin [class*="muted"] { color: var(--gf-muted) !important; }
-
-/* 滚动条 */
-html.cxb-gf-skin ::-webkit-scrollbar { width: 8px; height: 8px; }
-html.cxb-gf-skin ::-webkit-scrollbar-track { background: transparent; }
-html.cxb-gf-skin ::-webkit-scrollbar-thumb { background: rgba(139, 207, 216, 0.5); border-radius: 4px; }
-html.cxb-gf-skin ::-webkit-scrollbar-thumb:hover { background: rgba(139, 207, 216, 0.7); }

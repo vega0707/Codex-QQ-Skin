@@ -191,10 +191,16 @@ function buildPayload() {
         const streaming = msgLen > lastMsgLen + 2;
         lastMsgLen = msgLen;
 
-        if (/等待|需要确认|批准|允许此操作|授权此/.test(text)) return setState("approval");
-        if (/深度思考|思考中|思考用时/.test(text)) return setState("thinking");
+        // 结构信号（状态变化的直接 UI 结果，比纯文字可靠）
+        const hasStop = !!document.querySelector('button[aria-label*="停止"],button[aria-label*="中断"],button[aria-label*="stop" i]');
+        const hasSpinner = !!document.querySelector('[class*="animate-spin"],[class*="spinner"],[data-testid*="think"]');
+        const hasApproval = !!document.querySelector('[class*="approval"],[class*="permission"]') || /等待|需要确认|批准|允许此操作|授权此/.test(text);
+
+        if (hasApproval) return setState("approval");
         if (streaming) return setState("speaking");
-        if (/工作\\s*[\\d分]|正在执行|运行中|已完成\\s*\\d+\\s*项/.test(text)) return setState("acting");
+        if (hasStop && hasSpinner) return setState("thinking");
+        if (hasStop) return setState("acting");
+        if (/深度思考|思考中|思考用时/.test(text)) return setState("thinking");
         if (typing) return setState("listening");
         if (/全部完成|产物展示/.test(text)) return setState("done");
         return setState("idle");
