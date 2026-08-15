@@ -111,9 +111,6 @@ function buildPayload() {
   const warmVideos = {};
   for (const s of CYBER_STATES) warmVideos[s] = warmBase[WARM_REUSE[s]];
 
-  // 官方 speaking 配音视频（本地化，官网没了也能用）
-  const speakingAudio = "data:video/mp4;base64," + fs.readFileSync(path.join(HERE, "assets", "voice", "speaking.mp4")).toString("base64");
-
   const payload = `(() => {
     const KEY = "__CXB_GF_SKIN__";
     if (window[KEY]) return "already";
@@ -154,31 +151,14 @@ function buildPayload() {
       if (t !== theme) { applyTheme(t); setState("idle"); }
     }).observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 
-    // ---- 声音：官方本地配音（非 TTS）。speaking 状态放官方配音视频，其余静音 ----
-    const AUDIO_SPEAKING = ${JSON.stringify(speakingAudio)};
-    let voiceOn = false;
-    const enableVoice = () => {
-      voiceOn = true;
-      const v = document.getElementById("cxb-gf-live");
-      if (v && cur === "speaking") v.muted = false; // 交互时若正在说话，立即开声
-    };
-    window.addEventListener("pointerdown", enableVoice, { once: true });
-    window.addEventListener("keydown", enableVoice, { once: true });
-
-    // ---- 状态机：检测程小帮任务状态，切换视频 ----
+    // ---- 状态机：检测程小帮任务状态，切换视频（全部静音） ----
     let cur = "idle";
     let lastMsgLen = 0;
     const setState = (s) => {
       if (s === cur) return;
       cur = s;
-      if (s === "speaking") {
-        // speaking：官方带声音视频（画面+配音）；声音需首次交互解锁
-        video.src = AUDIO_SPEAKING;
-        video.muted = !voiceOn;
-      } else {
-        video.src = THEMES[theme].videos[s] || THEMES[theme].videos.idle;
-        video.muted = true;
-      }
+      video.src = THEMES[theme].videos[s] || THEMES[theme].videos.idle;
+      video.muted = true;
       video.play().catch(() => {});
     };
     const detect = () => {
