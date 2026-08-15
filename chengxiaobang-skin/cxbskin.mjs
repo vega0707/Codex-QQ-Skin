@@ -92,25 +92,33 @@ class Cdp {
 
 /* ---------------- 皮肤载荷 ---------------- */
 
-const STATES = ["idle", "listening", "thinking", "speaking", "acting", "approval", "done"];
+const CYBER_STATES = ["idle", "listening", "thinking", "speaking", "acting", "approval", "done"];
+const WARM_REUSE = { idle: "idle", listening: "listening", thinking: "listening", speaking: "speaking", acting: "idle", approval: "idle", done: "idle" };
+
+function readVideo(dir, state) {
+  return "data:video/webm;base64," + fs.readFileSync(path.join(dir, state + ".webm")).toString("base64");
+}
 
 function buildPayload() {
-  const css = fs.readFileSync(SKIN_CSS, "utf8");
-  const videos = {};
-  for (const s of STATES) {
-    const buf = fs.readFileSync(path.join(HERE, "assets", "states", s + ".webm"));
-    videos[s] = "data:video/webm;base64," + buf.toString("base64");
-  }
+  const cyberCss = fs.readFileSync(path.join(HERE, "assets", "gf-skin.css"), "utf8");
+  const warmCss = fs.readFileSync(path.join(HERE, "assets", "gf-warm.css"), "utf8");
+
+  const cyberDir = path.join(HERE, "assets", "themes", "cyber", "states");
+  const warmDir = path.join(HERE, "assets", "themes", "warm-white", "states");
+  const cyberVideos = {};
+  for (const s of CYBER_STATES) cyberVideos[s] = readVideo(cyberDir, s);
+  const warmBase = { idle: readVideo(warmDir, "idle"), listening: readVideo(warmDir, "listening"), speaking: readVideo(warmDir, "speaking") };
+  const warmVideos = {};
+  for (const s of CYBER_STATES) warmVideos[s] = warmBase[WARM_REUSE[s]];
+
   const payload = `(() => {
     const KEY = "__CXB_GF_SKIN__";
     if (window[KEY]) return "already";
-    const css = ${JSON.stringify(css)};
-    const VIDEOS = ${JSON.stringify(videos)};
+    const THEMES = ${JSON.stringify({ cyber: { css: cyberCss, videos: cyberVideos }, warm: { css: warmCss, videos: warmVideos } })};
 
-    // 注入样式
+    // 注入样式（随主题切换）
     const style = document.createElement("style");
     style.id = "cxb-gf-style-host";
-    style.textContent = css;
     (document.head || document.documentElement).appendChild(style);
 
     // 动态女友视频层（右侧大背景，沉底，随状态切换）
@@ -121,14 +129,27 @@ function buildPayload() {
     video.autoplay = true;
     video.playsInline = true;
     video.setAttribute("playsinline", "");
-    video.src = VIDEOS.idle;
     document.body.appendChild(video);
-    video.play().catch(() => {});
 
     // 女友上方渐变遮罩（保证左侧 UI 可读）
     const veil = document.createElement("div");
     veil.id = "cxb-gf-veil";
     document.body.appendChild(veil);
+
+    // ---- 主题管理：跟随程小帮深浅外观 ----
+    let theme = "cyber";
+    const detectTheme = () => document.documentElement.classList.contains("dark") ? "cyber" : "warm";
+    const applyTheme = (t) => {
+      theme = t;
+      style.textContent = THEMES[t].css;
+      video.src = THEMES[t].videos.idle;
+      video.play().catch(() => {});
+    };
+    applyTheme(detectTheme());
+    new MutationObserver(() => {
+      const t = detectTheme();
+      if (t !== theme) { applyTheme(t); setState("idle"); }
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 
     // ---- 声音：状态切换时女友语音（TTS），首次交互后启用 ----
     let voiceOn = false;
@@ -147,7 +168,7 @@ function buildPayload() {
       const line = VOICE[s];
       if (!line) return;
       const now = Date.now();
-      if (now - lastVoiceAt < 4000) return; // 防刷屏
+      if (now - lastVoiceAt < 4000) return;
       lastVoiceAt = now;
       try {
         const u = new SpeechSynthesisUtterance(line);
@@ -165,7 +186,7 @@ function buildPayload() {
     const setState = (s) => {
       if (s === cur) return;
       cur = s;
-      video.src = VIDEOS[s] || VIDEOS.idle;
+      video.src = THEMES[theme].videos[s] || THEMES[theme].videos.idle;
       video.play().catch(() => {});
       say(s);
     };
@@ -194,7 +215,7 @@ function buildPayload() {
     document.documentElement.classList.add("cxb-gf-skin");
 
     window[KEY] = true;
-    return "injected";
+    return "injected:" + theme;
   })()`;
   return payload;
 }

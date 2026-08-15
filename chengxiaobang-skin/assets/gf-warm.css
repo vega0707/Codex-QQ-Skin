@@ -1,25 +1,23 @@
-/* ===== 程小帮 · 赛博女友皮肤（沉浸式，基于 BuddyLiveGF 风格） ===== */
+/* ===== 程小帮 · 暖白女友皮肤（浅色沉浸，基于 BuddyLiveGF warm-white） ===== */
 
-/* 深色主题变量 */
+/* 暖白主题变量 */
 html.cxb-gf-skin {
-  --gf-bg: #14110d;
-  --gf-bg-rgb: 20, 17, 13;
-  --gf-panel: rgba(24, 21, 19, 0.62);
-  --gf-panel-strong: rgba(24, 21, 19, 0.80);
-  --gf-line: rgba(78, 195, 255, 0.30);
-  --gf-text: #eaf3ff;
-  --gf-muted: #a8bad4;
-  --gf-state: #d6a55f;
+  --gf-bg: #f7f3ee;
+  --gf-panel: rgba(255, 255, 255, 0.55);
+  --gf-panel-strong: rgba(255, 255, 255, 0.82);
+  --gf-line: rgba(139, 207, 216, 0.55);
+  --gf-text: #4a3f34;
+  --gf-muted: #9a8b7a;
+  --gf-accent: #8bcfd8;
 }
 
-/* 全屏深色底 */
+/* 全屏暖白底 */
 html.cxb-gf-skin,
 html.cxb-gf-skin body {
   background: var(--gf-bg) !important;
-  color-scheme: dark !important;
+  color-scheme: light !important;
 }
 
-/* 主内容层浮在背景之上、整体透明 */
 html.cxb-gf-skin body > #root {
   position: relative;
   z-index: 2;
@@ -38,23 +36,23 @@ html.cxb-gf-skin body > #root {
   object-fit: cover;
   object-position: center 30%;
   opacity: 0.92;
-  filter: drop-shadow(0 0 30px rgba(255, 0, 200, 0.25));
+  filter: drop-shadow(0 0 30px rgba(139, 207, 216, 0.35));
 }
 
-/* 女友上方加一层渐变遮罩，保证左侧 UI 可读 */
+/* 女友上方浅色渐变遮罩，保证左侧 UI 可读 */
 #cxb-gf-veil {
   position: fixed;
   inset: 0;
   z-index: 1;
   pointer-events: none;
   background: linear-gradient(90deg,
-    rgba(20, 17, 13, 0.92) 0%,
-    rgba(20, 17, 13, 0.72) 42%,
-    rgba(20, 17, 13, 0.25) 72%,
-    rgba(20, 17, 13, 0.05) 100%);
+    rgba(247, 243, 238, 0.95) 0%,
+    rgba(247, 243, 238, 0.78) 42%,
+    rgba(247, 243, 238, 0.30) 72%,
+    rgba(247, 243, 238, 0.05) 100%);
 }
 
-/* ---- 面板半透明，让女友透出来 ---- */
+/* ---- 面板半透明白，让女友透出来 ---- */
 html.cxb-gf-skin .bg-background,
 html.cxb-gf-skin .bg-card,
 html.cxb-gf-skin .bg-muted,
@@ -68,9 +66,9 @@ html.cxb-gf-skin .bg-popover {
 /* 侧边栏 */
 html.cxb-gf-skin .app-sidebar {
   z-index: 2147482501 !important;
-  color: rgba(239, 244, 249, 0.88) !important;
-  border-right-color: rgba(255, 235, 214, 0.07) !important;
-  background: rgba(20, 17, 13, 0.72) !important;
+  color: rgba(74, 63, 52, 0.92) !important;
+  border-right-color: rgba(74, 63, 52, 0.08) !important;
+  background: rgba(247, 243, 238, 0.78) !important;
   background-image: none !important;
   box-shadow: none !important;
 }
@@ -78,38 +76,31 @@ html.cxb-gf-skin .app-sidebar {
 html.cxb-gf-skin .app-sidebar button,
 html.cxb-gf-skin .app-sidebar a,
 html.cxb-gf-skin .app-sidebar [role="button"] {
-  color: rgba(239, 244, 249, 0.80) !important;
+  color: rgba(74, 63, 52, 0.82) !important;
 }
 
 /* 聊天区透明 */
-html.cxb-gf-skin .chat-layout-scope {
-  background: transparent !important;
-}
+html.cxb-gf-skin .chat-layout-scope { background: transparent !important; }
 
 html.cxb-gf-skin .latest-main-message {
   background: var(--gf-panel) !important;
   border-color: var(--gf-line) !important;
 }
 
-/* 输入区半透明 */
+/* 输入区半透明白 */
 html.cxb-gf-skin .side-chat-composer {
   background: var(--gf-panel-strong) !important;
   border-color: var(--gf-line) !important;
-  box-shadow: 0 0 0 1px rgba(78, 195, 255, 0.18), 0 0 24px rgba(0, 230, 255, 0.08) !important;
+  box-shadow: 0 0 0 1px rgba(139, 207, 216, 0.35), 0 0 24px rgba(139, 207, 216, 0.15) !important;
 }
 
 /* 全局文字颜色 */
-html.cxb-gf-skin body {
-  color: var(--gf-text) !important;
-}
-
+html.cxb-gf-skin body { color: var(--gf-text) !important; }
 html.cxb-gf-skin .muted,
-html.cxb-gf-skin [class*="muted"] {
-  color: var(--gf-muted) !important;
-}
+html.cxb-gf-skin [class*="muted"] { color: var(--gf-muted) !important; }
 
 /* 滚动条 */
 html.cxb-gf-skin ::-webkit-scrollbar { width: 8px; height: 8px; }
 html.cxb-gf-skin ::-webkit-scrollbar-track { background: transparent; }
-html.cxb-gf-skin ::-webkit-scrollbar-thumb { background: rgba(78, 195, 255, 0.3); border-radius: 4px; }
-html.cxb-gf-skin ::-webkit-scrollbar-thumb:hover { background: rgba(78, 195, 255, 0.5); }
+html.cxb-gf-skin ::-webkit-scrollbar-thumb { background: rgba(139, 207, 216, 0.5); border-radius: 4px; }
+html.cxb-gf-skin ::-webkit-scrollbar-thumb:hover { background: rgba(139, 207, 216, 0.7); }
