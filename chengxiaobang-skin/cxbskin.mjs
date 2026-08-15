@@ -125,7 +125,7 @@ function buildPayload() {
     const video = document.createElement("video");
     video.id = "cxb-gf-live";
     video.muted = true;
-    video.loop = true;
+    video.loop = false; // 不循环，播完一轮触发 ended，由 advance() 决定重播/切换
     video.autoplay = true;
     video.playsInline = true;
     video.setAttribute("playsinline", "");
@@ -142,35 +142,41 @@ function buildPayload() {
     const applyTheme = (t) => {
       theme = t;
       style.textContent = THEMES[t].css;
-      fadeVideo(THEMES[t].videos.idle);
+      switchVideo("idle");
     };
     new MutationObserver(() => {
       const t = detectTheme();
-      if (t !== theme) { applyTheme(t); setState("idle"); }
+      if (t !== theme) { applyTheme(t); setTarget("idle"); }
     }).observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 
     // ---- 状态机：检测程小帮任务状态，切换视频（全部静音） ----
     // 只用结构信号（停止按钮/spinner/流式/输入框），不用全文文字匹配——
     // 全文匹配会把聊天内容里的词（"等待确认""全部完成"）误判成状态。
+    // 只用结构信号（停止按钮/spinner/流式/输入框），不用全文文字匹配——
+    // 全文匹配会把聊天内容里的词（"等待确认""全部完成"）误判成状态。
+    //
+    // 切换策略：不硬切。detect 只更新「目标状态」，当前视频**播完一轮(ended)**后才切，
+    // 且切换时始终用最新的目标状态（中间变化被跳过，不排队积压）。
     let cur = "idle";
+    let target = "idle";
     let lastMsgLen = 0;
     let wasRunning = false;
     let doneUntil = 0;
-    const fadeVideo = (src, cb) => {
-      // 淡出 → 换源 → 等加载好 → 淡入（避免切换黑屏闪烁）
-      video.style.opacity = "0";
-      video.src = src;
-      video.play().catch(() => {});
-      let applied = false;
-      const fadeIn = () => { if (!applied) { applied = true; video.style.opacity = "1"; cb && cb(); } };
-      video.addEventListener("loadeddata", fadeIn, { once: true });
-      setTimeout(fadeIn, 700); // 兜底：加载慢时也淡入
-    };
-    const setState = (s) => {
-      if (s === cur) return;
+    const switchVideo = (s) => {
       cur = s;
-      fadeVideo(THEMES[theme].videos[s] || THEMES[theme].videos.idle);
+      video.src = THEMES[theme].videos[s] || THEMES[theme].videos.idle;
+      video.muted = true;
+      video.play().catch(() => {});
     };
+    const setTarget = (s) => { target = s; };
+    const advance = () => {
+      if (target === cur) { video.play().catch(() => {}); return; } // 同状态：重新播（循环）
+      switchVideo(target);                                         // 不同状态：切到最新目标
+    };
+    video.addEventListener("ended", advance);
+    // 兜底：万一 ended 不触发（如 data URL 异常），每秒检查一次是否该切
+    if (window.__CXB_GF_ADVANCE__) clearInterval(window.__CXB_GF_ADVANCE__);
+    window.__CXB_GF_ADVANCE__ = setInterval(() => { if (video.paused) advance(); }, 1000);
     const detect = () => {
       try {
         const ae = document.activeElement;
@@ -189,19 +195,19 @@ function buildPayload() {
         const running = hasStop || hasSpinner || streaming;
         if (running) {
           wasRunning = true;
-          if (hasApproval) return setState("approval");
-          if (streaming) return setState("speaking");
-          if (hasSpinner) return setState("thinking");
-          return setState("acting");
+          if (hasApproval) return setTarget("approval");
+          if (streaming) return setTarget("speaking");
+          if (hasSpinner) return setTarget("thinking");
+          return setTarget("acting");
         }
         // 刚停止（运行→空闲）：短暂显示 done
         if (wasRunning) {
           wasRunning = false;
           doneUntil = Date.now() + 4000;
         }
-        if (Date.now() < doneUntil) return setState("done");
-        if (typing) return setState("listening");
-        return setState("idle");
+        if (Date.now() < doneUntil) return setTarget("done");
+        if (typing) return setTarget("listening");
+        return setTarget("idle");
       } catch { /* ignore */ }
     };
     // 激活皮肤类
