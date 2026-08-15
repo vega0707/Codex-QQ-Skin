@@ -92,14 +92,20 @@ class Cdp {
 
 /* ---------------- 皮肤载荷 ---------------- */
 
+const STATES = ["idle", "listening", "thinking", "speaking", "acting", "approval", "done"];
+
 function buildPayload() {
-  const portraitB64 = fs.readFileSync(PORTRAIT).toString("base64");
   const css = fs.readFileSync(SKIN_CSS, "utf8");
+  const videos = {};
+  for (const s of STATES) {
+    const buf = fs.readFileSync(path.join(HERE, "assets", "states", s + ".webm"));
+    videos[s] = "data:video/webm;base64," + buf.toString("base64");
+  }
   const payload = `(() => {
     const KEY = "__CXB_GF_SKIN__";
     if (window[KEY]) return "already";
     const css = ${JSON.stringify(css)};
-    const portraitUrl = "data:image/png;base64," + ${JSON.stringify(portraitB64)};
+    const VIDEOS = ${JSON.stringify(videos)};
 
     // 注入样式
     const style = document.createElement("style");
@@ -107,13 +113,55 @@ function buildPayload() {
     style.textContent = css;
     (document.head || document.documentElement).appendChild(style);
 
-    // 设置立绘 CSS 变量
-    document.documentElement.style.setProperty("--gf-portrait", \`url("\${portraitUrl}")\`);
+    // 动态女友视频层（右下角，随状态切换）
+    const video = document.createElement("video");
+    video.id = "cxb-gf-live";
+    video.muted = true;
+    video.loop = true;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.setAttribute("playsinline", "");
+    Object.assign(video.style, {
+      position: "fixed", right: "16px", bottom: "64px",
+      width: "400px", height: "auto",
+      zIndex: "2147483647", pointerEvents: "none",
+      borderRadius: "16px",
+      filter: "drop-shadow(0 0 24px rgba(255,0,200,0.35))",
+      opacity: "0.96",
+    });
+    video.src = VIDEOS.idle;
+    document.body.appendChild(video);
+    video.play().catch(() => {});
 
-    // 添加背景立绘层
-    const bg = document.createElement("div");
-    bg.id = "cxb-gf-background";
-    document.body.appendChild(bg);
+    // ---- 状态机：检测程小帮任务状态，切换视频 ----
+    let cur = "idle";
+    let lastMsgLen = 0;
+    const setState = (s) => {
+      if (s === cur) return;
+      cur = s;
+      video.src = VIDEOS[s] || VIDEOS.idle;
+      video.play().catch(() => {});
+    };
+    const detect = () => {
+      try {
+        const text = document.body ? document.body.innerText : "";
+        const ae = document.activeElement;
+        const typing = ae && (ae.tagName === "TEXTAREA" || ae.tagName === "INPUT") && (ae.value || "").length > 0;
+        const msg = document.querySelector(".latest-main-message");
+        const msgLen = msg ? msg.innerText.length : 0;
+        const streaming = msgLen > lastMsgLen + 2;
+        lastMsgLen = msgLen;
+
+        if (/等待|需要确认|批准|允许此操作|授权此/.test(text)) return setState("approval");
+        if (/深度思考|思考中|思考用时/.test(text)) return setState("thinking");
+        if (streaming) return setState("speaking");
+        if (/工作\\s*[\\d分]|正在执行|运行中|已完成\\s*\\d+\\s*项/.test(text)) return setState("acting");
+        if (typing) return setState("listening");
+        if (/全部完成|产物展示/.test(text)) return setState("done");
+        return setState("idle");
+      } catch { /* ignore */ }
+    };
+    setInterval(detect, 800);
 
     // 激活皮肤类
     document.documentElement.classList.add("cxb-gf-skin");
@@ -128,6 +176,7 @@ function buildRemoveScript() {
   return `(() => {
     document.getElementById("cxb-gf-style-host")?.remove();
     document.getElementById("cxb-gf-background")?.remove();
+    document.getElementById("cxb-gf-live")?.remove();
     document.documentElement.classList.remove("cxb-gf-skin");
     document.documentElement.style.removeProperty("--gf-portrait");
     delete window.__CXB_GF_SKIN__;
