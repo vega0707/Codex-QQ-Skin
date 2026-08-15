@@ -69,3 +69,9 @@ html.cxb-gf-skin .app-sidebar {
 }
 
 html.cxb-gf-skin .chat-layout-scope { background: transparent !important; }
+
+/* 输入框不透明（实底，可读） */
+html.cxb-gf-skin textarea,
+html.cxb-gf-skin input[type="text"] {
+  background-color: #ffffff !important;
+}
