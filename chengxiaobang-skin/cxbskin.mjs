@@ -152,8 +152,12 @@ function buildPayload() {
     }).observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 
     // ---- 状态机：检测程小帮任务状态，切换视频（全部静音） ----
+    // 只用结构信号（停止按钮/spinner/流式/输入框），不用全文文字匹配——
+    // 全文匹配会把聊天内容里的词（"等待确认""全部完成"）误判成状态。
     let cur = "idle";
     let lastMsgLen = 0;
+    let wasRunning = false;
+    let doneUntil = 0;
     const setState = (s) => {
       if (s === cur) return;
       cur = s;
@@ -163,7 +167,6 @@ function buildPayload() {
     };
     const detect = () => {
       try {
-        const text = document.body ? document.body.innerText : "";
         const ae = document.activeElement;
         const typing = ae && (ae.tagName === "TEXTAREA" || ae.tagName === "INPUT") && (ae.value || "").length > 0;
         const msg = document.querySelector(".chat-scroll-area") || document.querySelector(".latest-main-message");
@@ -171,18 +174,27 @@ function buildPayload() {
         const streaming = msgLen > lastMsgLen + 2;
         lastMsgLen = msgLen;
 
-        // 结构信号（状态变化的直接 UI 结果，比纯文字可靠）
+        // 结构信号
         const hasStop = !!document.querySelector('button[aria-label*="停止"],button[aria-label*="中断"],button[aria-label*="stop" i]');
         const hasSpinner = !!document.querySelector('[class*="animate-spin"],[class*="spinner"],[data-testid*="think"]');
-        const hasApproval = !!document.querySelector('[class*="approval"],[class*="permission"]') || /等待|需要确认|批准|允许此操作|授权此/.test(text);
+        // 授权卡片：只认"可见的确认/授权弹窗按钮"，不匹配全文
+        const hasApproval = !!document.querySelector('[role="dialog"] button[aria-label*="允许"], [role="dialog"] button[aria-label*="批准"], [role="dialog"] button[aria-label*="授权"], [class*="approval"], [class*="permission"]');
 
-        if (hasApproval) return setState("approval");
-        if (streaming) return setState("speaking");
-        if (hasStop && hasSpinner) return setState("thinking");
-        if (hasStop) return setState("acting");
-        if (/深度思考|思考中|思考用时/.test(text)) return setState("thinking");
+        const running = hasStop || hasSpinner || streaming;
+        if (running) {
+          wasRunning = true;
+          if (hasApproval) return setState("approval");
+          if (streaming) return setState("speaking");
+          if (hasSpinner) return setState("thinking");
+          return setState("acting");
+        }
+        // 刚停止（运行→空闲）：短暂显示 done
+        if (wasRunning) {
+          wasRunning = false;
+          doneUntil = Date.now() + 4000;
+        }
+        if (Date.now() < doneUntil) return setState("done");
         if (typing) return setState("listening");
-        if (/全部完成|产物展示/.test(text)) return setState("done");
         return setState("idle");
       } catch { /* ignore */ }
     };
