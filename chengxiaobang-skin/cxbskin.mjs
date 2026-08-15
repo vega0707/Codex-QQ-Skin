@@ -111,6 +111,9 @@ function buildPayload() {
   const warmVideos = {};
   for (const s of CYBER_STATES) warmVideos[s] = warmBase[WARM_REUSE[s]];
 
+  // 官方 speaking 配音视频（本地化，官网没了也能用）
+  const speakingAudio = "data:video/mp4;base64," + fs.readFileSync(path.join(HERE, "assets", "voice", "speaking.mp4")).toString("base64");
+
   const payload = `(() => {
     const KEY = "__CXB_GF_SKIN__";
     if (window[KEY]) return "already";
@@ -151,8 +154,8 @@ function buildPayload() {
       if (t !== theme) { applyTheme(t); setState("idle"); }
     }).observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 
-    // ---- 声音：官方带声音素材（非 TTS）。speaking 状态放官方配音视频，其余静音 ----
-    const AUDIO_SPEAKING = "https://codex.liuwa.xyz/objective-live-speaking-with-audio.mp4";
+    // ---- 声音：官方本地配音（非 TTS）。speaking 状态放官方配音视频，其余静音 ----
+    const AUDIO_SPEAKING = ${JSON.stringify(speakingAudio)};
     let voiceOn = false;
     const enableVoice = () => {
       voiceOn = true;
