@@ -30,13 +30,24 @@ html.cxb-gf-skin body > #root {
   right: 0;
   bottom: 0;
   height: 100%;
-  width: 46%;
+  width: 50%;
   z-index: 1;
   pointer-events: none;
   object-fit: cover;
   object-position: 74% 30%;
-  opacity: 0.95;
-  filter: drop-shadow(0 0 30px rgba(139, 207, 216, 0.35));
+  opacity: 1;
+  -webkit-mask-image: radial-gradient(
+    ellipse 90% 70% at 70% 55%,
+    #000 0%, #000 50%,
+    rgba(0,0,0,.92) 65%,
+    rgba(0,0,0,.55) 82%,
+    transparent 100%);
+  mask-image: radial-gradient(
+    ellipse 90% 70% at 70% 55%,
+    #000 0%, #000 50%,
+    rgba(0,0,0,.92) 65%,
+    rgba(0,0,0,.55) 82%,
+    transparent 100%);
 }
 
 /* 女友上方浅色渐变遮罩，保证左侧 UI 可读 */
