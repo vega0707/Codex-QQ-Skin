@@ -35,7 +35,7 @@ html.cxb-gf-skin body > #root {
   pointer-events: none;
   object-fit: cover;
   object-position: 74% 30%;
-  opacity: 0.65;
+  opacity: 0.95;
   filter: drop-shadow(0 0 30px rgba(139, 207, 216, 0.35));
 }
 
