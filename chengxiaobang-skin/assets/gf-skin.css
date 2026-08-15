@@ -1,0 +1,104 @@
+/* ===== 程小帮 · 赛博女友皮肤（基于 BuddyLiveGF 风格） ===== */
+
+/* 深色主题变量 */
+#cxb-gf-skin {
+  --gf-bg: #14110d;
+  --gf-bg-rgb: 20, 17, 13;
+  --gf-panel: rgba(24, 21, 19, 0.92);
+  --gf-panel-strong: rgba(24, 21, 19, 0.97);
+  --gf-line: rgba(78, 195, 255, 0.30);
+  --gf-text: #eaf3ff;
+  --gf-muted: #a8bad4;
+  --gf-state: #d6a55f;
+}
+
+/* 全屏背景 + 立绘 */
+html.cxb-gf-skin,
+html.cxb-gf-skin body {
+  background: var(--gf-bg) !important;
+  color-scheme: dark !important;
+}
+
+html.cxb-gf-skin body > #root {
+  position: relative;
+  z-index: 2;
+  background: transparent !important;
+}
+
+/* 背景立绘层（右下角大图） */
+#cxb-gf-background {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  pointer-events: none;
+  width: 100%;
+  height: 100%;
+  background-image: var(--gf-portrait);
+  background-position: right bottom;
+  background-repeat: no-repeat;
+  background-size: contain;
+  opacity: 0.95;
+}
+
+/* 侧边栏 */
+html.cxb-gf-skin .app-sidebar {
+  z-index: 2147482501 !important;
+  color: rgba(239, 244, 249, 0.88) !important;
+  border-right-color: rgba(255, 235, 214, 0.07) !important;
+  background: var(--gf-bg) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+html.cxb-gf-skin .app-sidebar button,
+html.cxb-gf-skin .app-sidebar a,
+html.cxb-gf-skin .app-sidebar [role="button"] {
+  color: rgba(239, 244, 249, 0.80) !important;
+}
+
+/* 聊天区 */
+html.cxb-gf-skin .chat-layout-scope {
+  background: transparent !important;
+}
+
+html.cxb-gf-skin .latest-main-message {
+  background: var(--gf-panel) !important;
+  border-color: var(--gf-line) !important;
+}
+
+/* 输入区 */
+html.cxb-gf-skin .side-chat-composer {
+  background: var(--gf-panel-strong) !important;
+  border-color: var(--gf-line) !important;
+  box-shadow: 0 0 0 1px rgba(78, 195, 255, 0.18), 0 0 24px rgba(0, 230, 255, 0.08) !important;
+}
+
+/* 全局文字颜色 */
+html.cxb-gf-skin body {
+  color: var(--gf-text) !important;
+}
+
+html.cxb-gf-skin .muted,
+html.cxb-gf-skin [class*="muted"] {
+  color: var(--gf-muted) !important;
+}
+
+/* 滚动条 */
+html.cxb-gf-skin ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+html.cxb-gf-skin ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html.cxb-gf-skin ::-webkit-scrollbar-thumb {
+  background: rgba(78, 195, 255, 0.3);
+  border-radius: 4px;
+}
+
+html.cxb-gf-skin ::-webkit-scrollbar-thumb:hover {
+  background: rgba(78, 195, 255, 0.5);
+}
