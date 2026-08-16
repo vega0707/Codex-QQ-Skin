@@ -77,3 +77,9 @@ html.cxb-gf-skin textarea,
 html.cxb-gf-skin input[type="text"] {
   background-color: #1b1713 !important;
 }
+
+/* 输入框容器（含 textarea 的 .bg-card）不透明 */
+html.cxb-gf-skin .bg-card:has(textarea),
+html.cxb-gf-skin .bg-popover:has(textarea) {
+  background-color: #1b1713 !important;
+}
